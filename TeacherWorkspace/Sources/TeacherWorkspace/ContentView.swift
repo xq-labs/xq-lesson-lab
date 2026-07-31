@@ -10,34 +10,42 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
-            HStack(spacing: 0) {
-                SidebarView()
-                VStack(spacing: 0) {
-                    header
-                    HStack(spacing: 0) {
-                        mainContent
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        if state.previewOpen {
-                            PreviewPanel()
+            if state.needsModelSetup {
+                // First run, no model anywhere: nothing in the app can work,
+                // so setup takes over. Model *upgrades* never land here.
+                ModelGateView()
+            } else {
+                HStack(spacing: 0) {
+                    SidebarView()
+                    VStack(spacing: 0) {
+                        header
+                        HStack(spacing: 0) {
+                            mainContent
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            if state.previewOpen {
+                                PreviewPanel()
+                            }
                         }
                     }
+                    .frame(maxWidth: .infinity)
                 }
-                .frame(maxWidth: .infinity)
-            }
-            .background(t.bg)
-            .animation(.easeOut(duration: 0.15), value: state.previewOpen)
+                .background(t.bg)
+                .animation(.easeOut(duration: 0.15), value: state.previewOpen)
 
-            if state.scheduleOpen, state.showsDemoPlugins {
-                SchedulePopover()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                    .padding(.top, 84) // just below the 28 + 50pt header
-                    .padding(.trailing, 56)
+                if state.scheduleOpen, state.showsDemoPlugins {
+                    SchedulePopover()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                        .padding(.top, 84) // just below the 28 + 50pt header
+                        .padding(.trailing, 56)
+                }
+
+                if state.searchOpen {
+                    SearchOverlay()
+                }
             }
 
-            if state.searchOpen {
-                SearchOverlay()
-            }
-
+            // The tour overlays the gate on a true first launch — teachers
+            // see what the app is before being asked for a 1.2 GB download.
             if state.onboardingOpen {
                 OnboardingView()
             }

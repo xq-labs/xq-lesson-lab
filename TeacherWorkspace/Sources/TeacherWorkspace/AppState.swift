@@ -88,6 +88,9 @@ final class AppState: ObservableObject {
 
     let backend: ChatBackend = LlamaBackend.shared
     var modelAvailable: Bool { LlamaBackend.locateModelFile() != nil }
+    /// First run with no model at all: the app is unusable, so setup blocks
+    /// the whole UI. Once any model exists, downloads never block again.
+    var needsModelSetup: Bool { !modelAvailable && !LlamaBackend.anyModelPresent() }
 
     var theme: Theme { themeName == "light" ? .light : .dark }
 

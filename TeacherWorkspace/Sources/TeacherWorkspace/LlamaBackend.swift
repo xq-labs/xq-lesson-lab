@@ -42,6 +42,20 @@ final class LlamaBackend: ChatBackend, @unchecked Sendable {
         return FileManager.default.fileExists(atPath: devPath) ? devPath : nil
     }
 
+    /// True if *any* GGUF exists anywhere the app looks. Decides between the
+    /// blocking first-run setup screen (nothing at all — chat can't work) and
+    /// the inline download card (an older model is usable; never block a
+    /// future model upgrade).
+    static func anyModelPresent() -> Bool {
+        if locateModelFile() != nil { return true }
+        let fm = FileManager.default
+        func hasGGUF(_ dir: URL?) -> Bool {
+            guard let dir, let items = try? fm.contentsOfDirectory(atPath: dir.path) else { return false }
+            return items.contains { $0.hasSuffix(".gguf") }
+        }
+        return hasGGUF(Bundle.main.resourceURL) || hasGGUF(ModelDownloader.installDirectory)
+    }
+
     // MARK: - Loading
 
     /// Must be called on `queue`.

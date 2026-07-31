@@ -1,20 +1,64 @@
 import SwiftUI
 
-/// Shown above the composer while the on-device model isn't installed yet
-/// (ship-small builds download it on first launch). Disappears on its own
-/// once the download verifies and installs.
+/// Full-window first-run gate: with no model anywhere, the assistant can't
+/// do anything, so setup replaces the UI entirely until the download
+/// installs. Model *upgrades* (an older model still works) never come here —
+/// they get the non-blocking ModelSetupCard instead.
+struct ModelGateView: View {
+    @EnvironmentObject var state: AppState
+    @ObservedObject private var downloader = ModelDownloader.shared
+    private var t: Theme { state.theme }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer()
+            Image(systemName: "graduationcap")
+                .font(.system(size: 30, weight: .medium))
+                .foregroundStyle(t.accent)
+                .frame(width: 76, height: 76)
+                .background(Circle().fill(t.accentSoft))
+                .padding(.bottom, 18)
+            Text("Welcome to \(AppInfo.productName)")
+                .font(.system(size: 24, weight: .bold))
+            Text("One quick download and your assistant runs privately on this Mac —\nchats, rosters, and student notes never leave it.")
+                .font(.system(size: 13.5))
+                .foregroundStyle(t.sub)
+                .multilineTextAlignment(.center)
+                .padding(.top, 6)
+            ModelSetupCard(layout: .gate)
+                .frame(maxWidth: 480)
+                .padding(.top, 28)
+            Spacer()
+            Text("One-time download · after this, \(AppInfo.productName) works fully offline")
+                .font(.system(size: 11.5))
+                .foregroundStyle(t.dim)
+                .padding(.bottom, 22)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(t.bg)
+    }
+}
+
+/// Model download UI used two ways: `.gate` inside the first-run gate above,
+/// and `.inline` above the composer for non-blocking model upgrades.
+/// Disappears on its own once the download verifies and installs.
 struct ModelSetupCard: View {
+    enum Layout { case inline, gate }
+    var layout: Layout = .inline
+
     @EnvironmentObject var state: AppState
     @ObservedObject private var downloader = ModelDownloader.shared
     private var t: Theme { state.theme }
 
     var body: some View {
         HStack(alignment: .center, spacing: 14) {
-            Image(systemName: iconName)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(t.accent)
-                .frame(width: 38, height: 38)
-                .background(Circle().fill(t.accentSoft))
+            if layout == .inline {
+                Image(systemName: iconName)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(t.accent)
+                    .frame(width: 38, height: 38)
+                    .background(Circle().fill(t.accentSoft))
+            }
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.system(size: 13.5, weight: .semibold))
@@ -32,11 +76,11 @@ struct ModelSetupCard: View {
             Spacer(minLength: 12)
             actionButton
         }
-        .padding(14)
+        .padding(layout == .gate ? 18 : 14)
         .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(t.card))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(t.border))
         .padding(.horizontal, 20)
-        .padding(.bottom, 4)
+        .padding(.bottom, layout == .inline ? 4 : 0)
     }
 
     private var iconName: String {

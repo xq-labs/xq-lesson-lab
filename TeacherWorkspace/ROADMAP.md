@@ -140,7 +140,9 @@ data never leaves the teacher's Mac.**
 - [ ] Model tiering: Qwen3.5-4B option on capable Macs (+1.3 GB, no code change — just swap GGUF; distribution side is ready — new fixed-tag release + AppInfo constants, see RELEASING.md); optional BYO-API-key cloud backend via existing `ChatBackend` protocol (local stays default)
 - [~] Distribution (July 31): ship-small builds (~15 MB) with first-launch
       model download (resumable, SHA-256 verified — `ModelDownload.swift`,
-      `TW_MODEL_DL_TEST` probe); Sparkle 2 integrated (Check for Updates menu,
+      `TW_MODEL_DL_TEST` probe); with no model at all the download is a
+      blocking full-window gate (`ModelGateView` — chat can't work anyway),
+      while future model *upgrades* use the non-blocking inline card; Sparkle 2 integrated (Check for Updates menu,
       appcast on Vercel, delta updates); make-app.sh reads version/URLs from
       AppInfo.swift, `--bundle-model` for offline installs;
       scripts/make-release.sh does sign → notarize → staple → DMG → zip;

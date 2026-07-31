@@ -270,8 +270,9 @@ func drawInk(_ ctx: CGContext) {
 
 // MARK: - Render
 
-let concept = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "book"
-let outDir = CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : "."
+let positional = CommandLine.arguments.dropFirst().filter { !$0.hasPrefix("--") }
+let concept = positional.first ?? "book"
+let outDir = positional.count > 1 ? positional[positional.startIndex + 1] : "."
 let draw: (CGContext) -> Void = {
     switch concept {
     case "flask": return drawFlask
@@ -300,6 +301,25 @@ func write(_ image: CGImage, to path: String) {
 }
 
 let fm = FileManager.default
+
+// Web export: the same artwork as PNGs for the landing page. The 1024 is the
+// link-preview image, so it gets an opaque backdrop — social clients composite
+// transparency onto anything.
+if CommandLine.arguments.contains("--web") {
+    for (size, name) in [(32, "favicon-32.png"), (180, "apple-touch-icon.png"), (512, "icon-512.png")] {
+        write(render(size: size), to: "\(outDir)/\(name)")
+    }
+    let s = 1024
+    let ctx = CGContext(data: nil, width: s, height: s, bitsPerComponent: 8, bytesPerRow: 0,
+                        space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+    ctx.setFillColor(hex(0xFBF9F6))          // matches the site's --bg
+    ctx.fill(CGRect(x: 0, y: 0, width: s, height: s))
+    ctx.draw(render(size: s), in: CGRect(x: 0, y: 0, width: s, height: s))
+    write(ctx.makeImage()!, to: "\(outDir)/og-image.png")
+    print("Wrote web icons to \(outDir) (\(concept))")
+    exit(0)
+}
+
 let iconset = "\(outDir)/AppIcon.iconset"
 try? fm.removeItem(atPath: iconset)
 try! fm.createDirectory(atPath: iconset, withIntermediateDirectories: true)

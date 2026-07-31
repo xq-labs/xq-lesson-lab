@@ -70,7 +70,7 @@ func render(scale: CGFloat) -> CGImage {
     }
 
     // Arrow between the pads.
-    ctx.setStrokeColor(hex(0x8A877D, 0.85))
+    ctx.setStrokeColor(hex(0xB3B0A6, 0.95))
     ctx.setLineWidth(3)
     ctx.setLineCap(.round)
     ctx.setLineJoin(.round)
@@ -86,9 +86,9 @@ func render(scale: CGFloat) -> CGImage {
     drawText("XQ Lesson Lab", center: CGPoint(x: W / 2, y: 352), size: 17,
              weight: .semibold, color: hex(0xEFEEE9, 0.92), in: ctx)
     drawText("PRIVATE AI PLANNING FOR TEACHERS", center: CGPoint(x: W / 2, y: 330),
-             size: 9.5, weight: .medium, color: hex(0xA6A399, 0.75), tracking: 1.6, in: ctx)
+             size: 9.5, weight: .medium, color: hex(0xC6C3B9, 0.95), tracking: 1.6, in: ctx)
     drawText("Drag to install — runs 100% on your Mac", center: CGPoint(x: W / 2, y: 46),
-             size: 12, weight: .regular, color: hex(0x8B887E, 0.9), in: ctx)
+             size: 12.5, weight: .regular, color: hex(0xC6C3B9, 0.95), in: ctx)
 
     return ctx.makeImage()!
 }

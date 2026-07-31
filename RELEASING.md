@@ -16,14 +16,16 @@ SHA-256 (`AppInfo.modelSHA256`), and installed under
 
 ## One-time setup
 
-### 1. Apple Developer Program (blocks everything else)
-Currently on Douglas's personal account — Apple ID `ifdouglas@icloud.com`,
-team ID `6NYH4QMV76`. Switching to an XQ org account later is a normal
-Sparkle update signed by the new cert (same Sparkle key = continuity).
-- Enroll at developer.apple.com/enroll (Individual, $99/yr).
-- After approval: Xcode → Settings → Accounts → ifdouglas@icloud.com →
-  Manage Certificates… → + → **Developer ID Application**. Verify with:
-  `security find-identity -v -p codesigning`
+### 1. Apple Developer Program + certificate — DONE (2026-07-31)
+Douglas's personal account: Apple ID `ifdouglas@icloud.com`, team ID
+`6NYH4QMV76` (Individual membership, renews Sept 2026). The
+**"Developer ID Application: Douglas Fernandes (6NYH4QMV76)"** certificate
+(expires 2031/08/01) and its private key are in Douglas's login keychain.
+⚠️ Back up the identity: Keychain Access → My Certificates → right-click the
+Developer ID cert → Export as .p12 (that bundle contains the private key —
+without a backup, losing this Mac means revoking and re-issuing).
+Switching to an XQ org account later is a normal Sparkle update signed by
+the new cert (same Sparkle key = continuity).
 
 ### 2. Notarization credentials
 Create an app-specific password at account.apple.com (Sign-In & Security →

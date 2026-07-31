@@ -12,3 +12,6 @@ TeacherWorkspace/vendor/
 
 # Vercel local artifacts
 website/.vercel/
+
+# Release artifacts go to GitHub Releases, never into git
+TeacherWorkspace/release/

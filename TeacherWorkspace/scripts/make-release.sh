@@ -40,6 +40,10 @@ xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait
 xcrun stapler staple "$DMG"
 
 # Sparkle update archive (zip of the .app; generate_appcast signs it).
+# It lives in its own subdir because generate_appcast scans a directory and
+# refuses duplicates — the DMG next to the zip would count as one.
+mkdir -p "$OUT/appcast"
+ZIP="$OUT/appcast/Lesson-Lab-$VERSION.zip"
 ditto -c -k --keepParent "$APP" "$ZIP"
 
 echo ""
@@ -48,6 +52,6 @@ ls -lh "$OUT"
 echo ""
 echo "Next steps:"
 echo "  1. Regenerate the appcast (tool ships with the Sparkle SPM artifact; private key from login keychain):"
-echo "       .build/artifacts/sparkle/Sparkle/bin/generate_appcast --download-url-prefix https://github.com/xq-labs/xq-lesson-lab/releases/download/v$VERSION/ $OUT/"
-echo "  2. Copy $OUT/appcast.xml over website/appcast.xml and redeploy Vercel."
-echo "  3. Create GitHub release v$VERSION and upload: Lesson-Lab.dmg, Lesson-Lab-$VERSION.zip (+ any .delta files)."
+echo "       .build/artifacts/sparkle/Sparkle/bin/generate_appcast --download-url-prefix https://github.com/xq-labs/xq-lesson-lab/releases/download/v$VERSION/ $OUT/appcast/"
+echo "  2. Copy $OUT/appcast/appcast.xml over website/appcast.xml and redeploy Vercel."
+echo "  3. Create GitHub release v$VERSION and upload: $DMG, $OUT/appcast/*.zip (+ any .delta files)."

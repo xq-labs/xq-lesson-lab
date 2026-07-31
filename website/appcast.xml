@@ -1,14 +1,15 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Sparkle update feed. This placeholder ships no updates; each release,
-     scripts/make-release.sh prints the generate_appcast command that
-     produces the real entries — paste its output here and redeploy.
-     The app reads this at https://xq-lesson-lab.vercel.app/appcast.xml
-     (SUFeedURL in Info.plist, built from AppInfo.websiteURL). -->
-<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
-  <channel>
-    <title>Lesson Lab</title>
-    <link>https://xq-lesson-lab.vercel.app/appcast.xml</link>
-    <description>Lesson Lab updates</description>
-    <language>en</language>
-  </channel>
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>XQ Lesson Lab</title>
+        <item>
+            <title>1.0</title>
+            <pubDate>Fri, 31 Jul 2026 16:49:48 -0300</pubDate>
+            <sparkle:version>1</sparkle:version>
+            <sparkle:shortVersionString>1.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <enclosure url="https://github.com/xq-labs/xq-lesson-lab/releases/download/v1.0/Lesson-Lab-1.0.zip" length="5712441" type="application/octet-stream" sparkle:edSignature="/CA8H5p7XfM5jrtzzMM0qo/xQEm1i8/T+XnpJutppcRhjlY4CqJeB6dx57Y6SlFa/T9Aacu17yU6i5aK/yxkCw=="/>
+        </item>
+    </channel>
 </rss>

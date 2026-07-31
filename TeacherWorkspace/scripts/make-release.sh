@@ -27,12 +27,11 @@ ZIP="$OUT/Lesson-Lab-$VERSION.zip"
 mkdir -p "$OUT"
 rm -f "$DMG" "$ZIP"
 
-# DMG with an Applications symlink — the standard drag-to-install layout.
-STAGE=$(mktemp -d)
-cp -R "$APP" "$STAGE/"
-ln -s /Applications "$STAGE/Applications"
-hdiutil create -volname "$PRODUCT_NAME" -srcfolder "$STAGE" -ov -format UDZO "$DMG" >/dev/null
-rm -rf "$STAGE"
+# DMG with an Applications symlink, custom volume icon, and a designed
+# drag-to-install window: build read-write first, let Finder lay it out,
+# then compress. scripts/make-dmg-layout.sh owns that dance so it can be
+# tested without signing credentials.
+scripts/make-dmg-layout.sh "$APP" "$PRODUCT_NAME" "$DMG"
 codesign --force --sign "$SIGN_IDENTITY" "$DMG"
 
 echo "Submitting DMG for notarization (this can take a few minutes)…"

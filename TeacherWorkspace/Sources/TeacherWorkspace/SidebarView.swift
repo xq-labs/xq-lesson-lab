@@ -70,6 +70,9 @@ struct SidebarView: View {
             Text(AppInfo.productName)
                 .font(.system(size: 16, weight: .bold))
                 .kerning(-0.16)
+                .lineLimit(1)
+                .truncationMode(.tail)
+            VersionBadge()
             Spacer()
             Button {
                 state.toggleSearch()
@@ -379,6 +382,37 @@ struct SidebarView: View {
         .overlay(alignment: .top) {
             Rectangle().fill(t.border).frame(height: 1)
         }
+    }
+}
+
+/// Version chip beside the app name. Hovering turns it into a
+/// "Check for updates" button (Sparkle's standard flow: either an
+/// up-to-date dialog or the download/install sheet). Dev builds have no
+/// update feed, so there it stays a plain version label.
+private struct VersionBadge: View {
+    @EnvironmentObject var state: AppState
+    @State private var hovering = false
+    private var t: Theme { state.theme }
+    private var canCheck: Bool { UpdateChecker.shared.isAvailable }
+    private var active: Bool { hovering && canCheck }
+
+    var body: some View {
+        Button {
+            UpdateChecker.shared.checkForUpdates()
+        } label: {
+            Text(active ? "Check for updates" : "v\(AppInfo.version)")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(active ? t.accent : t.dim)
+                .padding(.vertical, 2)
+                .padding(.horizontal, 6)
+                .background(Capsule().fill(active ? t.accentSoft : t.hover))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .disabled(!canCheck)
+        .onHover { hovering = $0 }
+        .help(canCheck ? "Check for updates" : "Version \(AppInfo.version) — updates run from the installed app")
+        .animation(.easeOut(duration: 0.12), value: active)
     }
 }
 

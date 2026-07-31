@@ -1,21 +1,39 @@
 import Foundation
 
-enum ArtifactType {
-    case rubric, activity, pog
+enum ArtifactType: String, Codable {
+    case rubric, activity, pog, quiz, email
+
+    var libraryName: String {
+        switch self {
+        case .rubric: return "Rubrics"
+        case .activity: return "Activities"
+        case .pog: return "Portraits of a Graduate"
+        case .quiz: return "Quizzes"
+        case .email: return "Email drafts"
+        }
+    }
+
+    /// Inline editing exists only for the original three types so far.
+    var supportsEditing: Bool {
+        switch self {
+        case .rubric, .activity, .pog: return true
+        case .quiz, .email: return false
+        }
+    }
 }
 
-struct ArtifactRef: Equatable {
+struct ArtifactRef: Equatable, Codable {
     var type: ArtifactType
     var id: String
 }
 
-struct RubricCriterion {
+struct RubricCriterion: Codable {
     var name: String
     /// Four cells: Beginning, Developing, Proficient, Advanced.
     var cells: [String]
 }
 
-struct Rubric: Identifiable {
+struct Rubric: Identifiable, Codable {
     var id: String
     var title: String
     var sub: String
@@ -23,7 +41,7 @@ struct Rubric: Identifiable {
     var criteria: [RubricCriterion]
 }
 
-struct Activity: Identifiable {
+struct Activity: Identifiable, Codable {
     var id: String
     var title: String
     var meta: String
@@ -31,13 +49,13 @@ struct Activity: Identifiable {
     var steps: [String]
 }
 
-struct PogCompetency {
+struct PogCompetency: Codable {
     var name: String
     var desc: String
     var level: Int // 1...5
 }
 
-struct Pog: Identifiable {
+struct Pog: Identifiable, Codable {
     var id: String
     var title: String
     var sub: String
@@ -45,9 +63,41 @@ struct Pog: Identifiable {
     var comps: [PogCompetency]
 }
 
-struct Chat: Identifiable {
+struct QuizQuestion: Codable, Equatable {
+    var prompt: String
+    /// Multiple-choice options; empty for short-answer questions.
+    var choices: [String] = []
+    var answer: String = ""
+}
+
+struct Quiz: Identifiable, Codable {
     var id: String
     var title: String
+    var sub: String
+    var meta: String
+    var questions: [QuizQuestion]
+}
+
+struct EmailDraft: Identifiable, Codable {
+    var id: String
+    /// The subject line doubles as the artifact title.
+    var title: String
+    var sub: String
+    var meta: String
+    var body: String
+}
+
+struct Chat: Identifiable, Codable {
+    var id: String
+    var title: String
+}
+
+/// A teacher-made grouping in the sidebar. Membership lives in
+/// `AppState.chatFolder` rather than on `Chat`, so sample chats — which aren't
+/// persisted — can be filed too.
+struct Folder: Identifiable, Codable, Equatable {
+    var id: String
+    var name: String
 }
 
 struct ChatGroup: Identifiable {
@@ -56,14 +106,89 @@ struct ChatGroup: Identifiable {
     var chats: [Chat]
 }
 
-struct Message: Identifiable {
-    let id = UUID()
+struct Message: Identifiable, Codable {
+    var id = UUID()
     var role: Role
     var text: String
     var artifact: ArtifactRef?
     var source: String?
+    /// Names of files/artifacts attached to this (user) message — shown as chips.
+    var attachmentNames: [String]?
+    /// The attachments' extracted text: sent to the model with every turn
+    /// that includes this message, but never rendered in the bubble.
+    var hiddenContext: String?
+    /// True while an artifact block is still streaming in for this message.
+    /// Transient — not persisted (excluded from CodingKeys).
+    var isDraftingArtifact = false
 
-    enum Role { case user, assistant }
+    enum Role: String, Codable { case user, assistant }
+
+    enum CodingKeys: String, CodingKey {
+        case id, role, text, artifact, source, attachmentNames, hiddenContext
+    }
+}
+
+// MARK: - Classroom (the teacher's real setup; drives the system prompt)
+
+struct Student: Identifiable, Codable, Equatable {
+    var id = UUID()
+    var name = ""
+    /// Freeform teacher notes: strengths, growth areas, accommodations.
+    var notes = ""
+}
+
+struct ClassSection: Identifiable, Codable, Equatable {
+    var id = UUID()
+    var name = ""        // e.g. "Period 2 · Biology"
+    var gradeLevel = ""  // e.g. "9th grade"
+    var notes = ""       // current unit, context for the assistant
+    var students: [Student] = []
+}
+
+struct Classroom: Codable, Equatable {
+    var teacherName = ""
+    var school = ""
+    var subject = ""
+    var classes: [ClassSection] = []
+    /// True until the teacher edits anything — while set, the app shows the
+    /// demo sample chats/artifacts alongside this (editable) demo classroom.
+    var isDemo = true
+
+    var firstName: String {
+        teacherName.split(separator: " ").first.map(String.init) ?? teacherName
+    }
+
+    /// Nothing typed in yet — the state right after "Start fresh". An empty
+    /// class card still counts as blank, so adding one doesn't withdraw the
+    /// offer to put the demo data back.
+    var isBlank: Bool {
+        teacherName.isEmpty && school.isEmpty && subject.isEmpty
+            && classes.allSatisfy {
+                $0.name.isEmpty && $0.gradeLevel.isEmpty && $0.notes.isEmpty && $0.students.isEmpty
+            }
+    }
+
+    static let demo = Classroom(
+        teacherName: "Dana Alvarez",
+        school: "Crestview High",
+        subject: "Science",
+        classes: [
+            ClassSection(
+                name: "Period 2 · Biology",
+                gradeLevel: "9th grade",
+                notes: "Photosynthesis unit in progress; exit tickets every Friday.",
+                students: [
+                    Student(name: "Maya Rodriguez", notes: "Strong decoding, weak inference on science texts."),
+                    Student(name: "Jamal Carter", notes: "Ahead in the genetics unit; needs extension work."),
+                    Student(name: "Sofia Kim", notes: "Catching up after a 4-day absence."),
+                ]),
+            ClassSection(
+                name: "Period 4 · Env. Science",
+                gradeLevel: "11th grade",
+                notes: "Renewable energy debate prep; wetlands field trip on May 12.",
+                students: []),
+        ],
+        isDemo: true)
 }
 
 enum SampleData {
@@ -292,13 +417,60 @@ enum SampleData {
 
     static let integrationDefs: [IntegrationDef] = [
         IntegrationDef(key: "classroom", name: "Google Classroom", initial: "C", desc: "Rosters, assignments, and grades give the assistant class context."),
-        IntegrationDef(key: "calendar", name: "Google Calendar", initial: "G", desc: "Schedule-aware planning — lessons fit your real periods and meetings."),
         IntegrationDef(key: "drive", name: "Google Drive", initial: "D", desc: "Rubrics and activities save straight to your teaching folders."),
         IntegrationDef(key: "sis", name: "PowerSchool SIS", initial: "P", desc: "Gradebook and attendance inform interventions and catch-up plans."),
         IntegrationDef(key: "gmail", name: "Gmail", initial: "M", desc: "Family emails drafted in chat, sent from your address."),
         IntegrationDef(key: "seesaw", name: "Seesaw", initial: "S", desc: "Pull student portfolio evidence into PoG updates."),
         IntegrationDef(key: "canvas", name: "Canvas LMS", initial: "C", desc: "Sync modules and assignments for cross-listed courses."),
     ]
+
+    struct SkillDef {
+        var key: String
+        var name: String
+        var icon: String
+        var desc: String
+    }
+
+    /// Task-specific skills shown on the Plugins → Skills tab.
+    static let skillDefs: [SkillDef] = [
+        SkillDef(key: "rubric-builder", name: "Rubric Builder", icon: "tablecells",
+                 desc: "Four-level rubrics in your school's format, ready to grade with."),
+        SkillDef(key: "lesson-planner", name: "Lesson Planner", icon: "calendar",
+                 desc: "Timed agendas that fit your periods, with materials lists."),
+        SkillDef(key: "exit-tickets", name: "Exit Tickets", icon: "checklist",
+                 desc: "Quick checks for understanding, scored against your rubrics."),
+        SkillDef(key: "family-emails", name: "Family Emails", icon: "envelope",
+                 desc: "Warm, clear notes home — drafted for your review, you send."),
+        SkillDef(key: "differentiation", name: "Differentiation Coach", icon: "person.2",
+                 desc: "Adapts tomorrow's lesson for the students in your roster."),
+        SkillDef(key: "pog-updater", name: "PoG Updater", icon: "person.crop.square",
+                 desc: "Turns recent work and observations into Portrait updates."),
+    ]
+
+    struct CalendarEvent: Identifiable {
+        let id = UUID()
+        var start: Date
+        var end: Date
+        var title: String
+        var detail: String
+    }
+
+    /// Demo schedule anchored to "now" so it always looks live on stage.
+    static func todaysSchedule(now: Date = Date()) -> [CalendarEvent] {
+        func at(_ minutes: Int) -> Date { now.addingTimeInterval(TimeInterval(minutes * 60)) }
+        return [
+            CalendarEvent(start: at(-20), end: at(25), title: "Period 4 · Biology",
+                          detail: "Photosynthesis lab · Room 118"),
+            CalendarEvent(start: at(35), end: at(85), title: "Prep period",
+                          detail: "Grade exit tickets · plan Friday review"),
+            CalendarEvent(start: at(95), end: at(145), title: "Period 5 · Biology",
+                          detail: "Photosynthesis lab · Room 118"),
+            CalendarEvent(start: at(160), end: at(200), title: "Science dept. meeting",
+                          detail: "Room 210 · curriculum review"),
+            CalendarEvent(start: at(210), end: at(255), title: "Office hours",
+                          detail: "Tutoring — Jamal, Sofia"),
+        ]
+    }
 
     struct Suggestion {
         var title: String
@@ -307,9 +479,11 @@ enum SampleData {
     }
 
     static let suggestions: [Suggestion] = [
-        Suggestion(title: "Plan a differentiated lesson", sub: "Using your latest exit-ticket data", seed: "Plan a differentiated lesson for Period 2 on "),
-        Suggestion(title: "Draft a rubric", sub: "Four levels, aligned to your standards", seed: "Draft a 4-level rubric for "),
-        Suggestion(title: "Write home to families", sub: "Drafted for review, sent via Gmail", seed: "Draft an email to families about "),
+        Suggestion(title: "Draft a rubric", sub: "Four levels, ready to grade with", seed: "Draft a 4-level rubric for "),
+        Suggestion(title: "Plan a lesson", sub: "Timed agenda, saved to Activities", seed: "Create a lesson plan for "),
+        Suggestion(title: "Make an exit ticket", sub: "Quick check for understanding", seed: "Create a 5-question exit ticket quiz on "),
+        Suggestion(title: "Write home to families", sub: "Drafted for your review — you send it", seed: "Draft an email to families about "),
+        Suggestion(title: "Differentiate for a student", sub: "Grounded in your roster notes", seed: "How should I adapt tomorrow’s lesson for "),
         Suggestion(title: "Update a student’s PoG", sub: "From recent work and observations", seed: "Update the Portrait of a Graduate for "),
     ]
 }

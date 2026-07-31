@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sparkle update feed. This placeholder ships no updates; each release,
+     scripts/make-release.sh prints the generate_appcast command that
+     produces the real entries — paste its output here and redeploy.
+     The app reads this at https://xq-lesson-lab.vercel.app/appcast.xml
+     (SUFeedURL in Info.plist, built from AppInfo.websiteURL). -->
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>Lesson Lab</title>
+    <link>https://xq-lesson-lab.vercel.app/appcast.xml</link>
+    <description>Lesson Lab updates</description>
+    <language>en</language>
+  </channel>
+</rss>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson Lab — private AI planning for teachers</title>
+<meta name="description" content="An AI teaching assistant that runs entirely on your Mac. Rubrics, lesson plans, quizzes, and family emails — nothing you type ever leaves your computer.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧪</text></svg>">
+<style>
+  :root {
+    --bg: #FCFBF9; --text: #22211D; --sub: #75726A; --card: #FFFFFF;
+    --border: #E7E4DD; --accent: #3E68CE; --accent-soft: #EBEFFA;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #212121; --text: #EDEDEB; --sub: #A6A49C; --card: #2E2E2C;
+      --border: #3B3B38; --accent: #7D9BEB; --accent-soft: rgba(125,155,235,.14);
+    }
+  }
+  * { margin: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    display: flex; min-height: 100vh; flex-direction: column; align-items: center;
+    padding: 48px 24px;
+  }
+  main { max-width: 640px; width: 100%; text-align: center; }
+  .logo { font-size: 56px; }
+  h1 { font-size: 40px; letter-spacing: -0.5px; margin: 8px 0 4px; }
+  .tagline { color: var(--sub); font-size: 19px; margin-bottom: 28px; }
+  .download {
+    display: inline-block; background: var(--accent); color: #fff;
+    font-size: 17px; font-weight: 600; text-decoration: none;
+    padding: 14px 34px; border-radius: 12px;
+  }
+  .download:hover { filter: brightness(1.08); }
+  .meta { color: var(--sub); font-size: 13.5px; margin-top: 12px; }
+  .features {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px; margin: 44px 0 0; text-align: left;
+  }
+  .feature {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 18px;
+  }
+  .feature h3 { font-size: 15px; margin-bottom: 4px; }
+  .feature p { font-size: 13.5px; color: var(--sub); }
+  .note {
+    margin-top: 36px; background: var(--accent-soft); border-radius: 12px;
+    padding: 14px 18px; font-size: 13.5px; color: var(--sub); text-align: left;
+  }
+  .note strong { color: var(--text); }
+  footer { margin-top: auto; padding-top: 48px; color: var(--sub); font-size: 13px; }
+  footer a { color: var(--sub); }
+</style>
+</head>
+<body>
+<main>
+  <div class="logo">🧪</div>
+  <h1>Lesson Lab</h1>
+  <p class="tagline">An AI planning assistant made for teachers — and it never leaves your Mac.</p>
+
+  <a class="download" href="https://github.com/xq-labs/xq-lesson-lab/releases/latest/download/Lesson-Lab.dmg">
+    Download for Mac
+  </a>
+  <p class="meta">Free · macOS 14 or later · Apple Silicon recommended</p>
+
+  <div class="features">
+    <div class="feature">
+      <h3>🔒 Private by design</h3>
+      <p>The AI model runs entirely on your Mac. Chats, rosters, and student notes are never sent anywhere.</p>
+    </div>
+    <div class="feature">
+      <h3>📝 Real classroom materials</h3>
+      <p>Rubrics, lesson plans, exit tickets, quizzes, and family emails — created as editable cards, saved to libraries.</p>
+    </div>
+    <div class="feature">
+      <h3>🎓 Knows your classroom</h3>
+      <p>Add your classes and roster, then @mention a student and the assistant plans with them in mind.</p>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>First launch:</strong> the app downloads its AI model (about 1.2&nbsp;GB) once, then works fully offline.
+    School IT can allowlist <code>github.com</code> and <code>objects.githubusercontent.com</code> if downloads are filtered.
+  </div>
+</main>
+<footer>
+  Built by <a href="https://xqinstitute.org">XQ Institute</a> · Updates are delivered automatically inside the app
+</footer>
+</body>
+</html>

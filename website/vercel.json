@@ -1,0 +1,12 @@
+{
+  "cleanUrls": true,
+  "headers": [
+    {
+      "source": "/appcast.xml",
+      "headers": [
+        { "key": "Content-Type", "value": "application/rss+xml; charset=utf-8" },
+        { "key": "Cache-Control", "value": "public, max-age=300" }
+      ]
+    }
+  ]
+}

@@ -2,6 +2,12 @@ import SwiftUI
 
 struct ChatView: View {
     @EnvironmentObject var state: AppState
+    @StateObject private var dictation = DictationController()
+    @StateObject private var mentionProxy = MentionFieldProxy()
+    @State private var mentionSuggestions: [Mention] = []
+    @State private var mentionStart = 0
+    @State private var mentionIndex = 0
+    @State private var pulse = false
     private var t: Theme { state.theme }
 
     var body: some View {
@@ -10,6 +16,9 @@ struct ChatView: View {
                 welcome
             } else {
                 messageList
+            }
+            if !state.modelAvailable {
+                ModelSetupCard()
             }
             composer
         }
@@ -21,7 +30,7 @@ struct ChatView: View {
         GeometryReader { _ in
             VStack(spacing: 8) {
                 Spacer()
-                Text("Good morning, Dana.")
+                Text(state.greeting)
                     .font(.system(size: 26, weight: .bold))
                     .kerning(-0.5)
                 Text("What are we working on for your students today?")
@@ -33,6 +42,24 @@ struct ChatView: View {
                     }
                 }
                 .frame(maxWidth: 640)
+                if state.classroom.isDemo {
+                    Button {
+                        state.setView(.classroom)
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "sparkles")
+                            Text("You're seeing demo data — set up My Classroom so replies fit your real students")
+                            Image(systemName: "arrow.right")
+                        }
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(t.accent)
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 14)
+                        .background(Capsule().fill(t.accentSoft))
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 18)
+                }
                 Spacer()
             }
             .frame(maxWidth: .infinity)
@@ -70,6 +97,24 @@ struct ChatView: View {
                     ForEach(state.messages) { msg in
                         messageRow(msg)
                     }
+                    if state.canRegenerate {
+                        HStack {
+                            Button {
+                                state.regenerate()
+                            } label: {
+                                Label("Regenerate", systemImage: "arrow.counterclockwise")
+                                    .font(.system(size: 11.5, weight: .semibold))
+                                    .foregroundStyle(t.dim)
+                                    .padding(.vertical, 5)
+                                    .padding(.horizontal, 10)
+                                    .contentShape(Capsule())
+                            }
+                            .buttonStyle(.plain)
+                            .hoverHighlight(radius: 12, hover: t.hover)
+                            .help("Try this reply again")
+                            Spacer()
+                        }
+                    }
                     Color.clear.frame(height: 1).id("bottom")
                 }
                 .frame(maxWidth: 768)
@@ -92,24 +137,53 @@ struct ChatView: View {
         if msg.role == .user {
             HStack {
                 Spacer(minLength: 0)
-                Text(msg.text)
-                    .font(.system(size: 14))
-                    .foregroundStyle(t.text)
-                    .padding(.vertical, 11)
-                    .padding(.horizontal, 16)
-                    .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(t.bubble))
-                    .frame(maxWidth: 560, alignment: .trailing)
+                VStack(alignment: .trailing, spacing: 6) {
+                    if let names = msg.attachmentNames, !names.isEmpty {
+                        ForEach(names, id: \.self) { name in
+                            HStack(spacing: 5) {
+                                Image(systemName: "paperclip")
+                                    .font(.system(size: 9, weight: .semibold))
+                                Text(name)
+                                    .font(.system(size: 11.5, weight: .semibold))
+                                    .lineLimit(1)
+                            }
+                            .foregroundStyle(t.accent)
+                            .padding(.vertical, 4)
+                            .padding(.horizontal, 9)
+                            .background(Capsule().fill(t.accentSoft))
+                        }
+                    }
+                    if !msg.text.isEmpty {
+                        Text(msg.text)
+                            .font(.system(size: 14))
+                            .foregroundStyle(t.text)
+                            .padding(.vertical, 11)
+                            .padding(.horizontal, 16)
+                            .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(t.bubble))
+                    }
+                }
+                .frame(maxWidth: 560, alignment: .trailing)
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
         } else {
             VStack(alignment: .leading, spacing: 12) {
-                Text(msg.text)
-                    .font(.system(size: 14.5))
-                    .lineSpacing(4)
-                    .foregroundStyle(t.text)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                if msg.text.isEmpty && state.isStreaming {
+                    if !msg.isDraftingArtifact {
+                        ThinkingIndicator()
+                    }
+                } else {
+                    Text(Self.renderMarkdown(msg.text))
+                        .font(.system(size: 14.5))
+                        .lineSpacing(4)
+                        .foregroundStyle(t.text)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .textSelection(.enabled)
+                }
                 if let ref = msg.artifact, let art = state.artifact(for: ref) {
                     artifactCard(ref: ref, title: art.title, meta: art.meta)
+                }
+                if msg.isDraftingArtifact {
+                    draftingArtifactCard
                 }
                 if let source = msg.source {
                     HStack(spacing: 6) {
@@ -122,6 +196,28 @@ struct ChatView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+
+    private var draftingArtifactCard: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "doc.text")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(t.accent)
+                .frame(width: 34, height: 34)
+                .background(RoundedRectangle(cornerRadius: 9).fill(t.accentSoft))
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Drafting artifact…")
+                    .font(.system(size: 13.5, weight: .semibold))
+                    .foregroundStyle(t.text)
+                ThinkingIndicator()
+            }
+            Spacer(minLength: 8)
+        }
+        .padding(.vertical, 12)
+        .padding(.horizontal, 14)
+        .frame(maxWidth: 420)
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(t.card))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(t.border))
     }
 
     private func artifactCard(ref: ArtifactRef, title: String, meta: String) -> some View {
@@ -161,42 +257,59 @@ struct ChatView: View {
 
     private var composer: some View {
         VStack(spacing: 8) {
+            if !mentionSuggestions.isEmpty {
+                mentionPicker
+            }
             VStack(spacing: 8) {
-                TextField("Work with your teaching assistant", text: $state.draft)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 14.5))
-                    .foregroundStyle(t.text)
-                    .onSubmit { state.send() }
+                if !state.pendingAttachments.isEmpty {
+                    attachmentChips
+                }
+                MentionTextView(
+                    text: $state.draft,
+                    proxy: mentionProxy,
+                    catalog: state.mentionCatalog,
+                    placeholder: dictation.isActive
+                        ? "Listening…"
+                        : "Work with your teaching assistant — type @ to reference a student or artifact",
+                    theme: t,
+                    pickerOpen: !mentionSuggestions.isEmpty,
+                    onSubmit: sendFromComposer,
+                    onQueryChange: { start, query in
+                        mentionStart = start
+                        mentionSuggestions = state.mentionSuggestions(for: query)
+                        if mentionIndex >= mentionSuggestions.count { mentionIndex = 0 }
+                    },
+                    onQueryEnd: closeMentionPicker,
+                    onMove: { delta in
+                        guard !mentionSuggestions.isEmpty else { return }
+                        let count = mentionSuggestions.count
+                        mentionIndex = (mentionIndex + delta + count) % count
+                    },
+                    onAccept: acceptMention,
+                    onCancel: closeMentionPicker)
                 HStack(spacing: 6) {
-                    composerIcon("plus", help: "Attach")
-                    Button {} label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "person")
-                                .font(.system(size: 11, weight: .medium))
-                            Text("Class context")
-                                .font(.system(size: 12.5, weight: .semibold))
-                        }
-                        .foregroundStyle(t.sub)
-                        .padding(.horizontal, 10)
-                        .frame(height: 30)
-                        .contentShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    .hoverHighlight(radius: 15, hover: t.hover)
-                    .help("Reference a class or student")
+                    plusMenu
+                    // Class context pill hidden for now — @mentions cover the
+                    // same ground inline. `contextPicker` is still wired up
+                    // (and its per-chat selection still feeds the prompt), so
+                    // putting it back is a one-line change.
                     Spacer()
-                    composerIcon("mic", help: "Dictate")
+                    micButton
                     Button {
-                        state.send()
+                        if state.isStreaming {
+                            state.cancelGeneration()
+                        } else {
+                            sendFromComposer()
+                        }
                     } label: {
-                        Image(systemName: "arrow.up")
+                        Image(systemName: state.isStreaming ? "stop.fill" : "arrow.up")
                             .font(.system(size: 13, weight: .bold))
                             .foregroundStyle(t.sendFg)
                             .frame(width: 32, height: 32)
                             .background(Circle().fill(t.sendBg))
                     }
                     .buttonStyle(.plain)
-                    .help("Send")
+                    .help(state.isStreaming ? "Stop" : "Send")
                 }
             }
             .padding(.top, 12)
@@ -208,17 +321,312 @@ struct ChatView: View {
                     .fill(t.input)
                     .shadow(color: .black.opacity(0.12), radius: 5, y: 2)
             )
-            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(t.border))
+            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(
+                dictation.isActive ? t.red.opacity(0.55) : t.border))
 
-            Text("Connected: Google Classroom · Calendar · Drive · PowerSchool · Gmail")
-                .font(.system(size: 11.5))
-                .foregroundStyle(t.dim)
+            if let failure = dictation.failure {
+                HStack(spacing: 8) {
+                    Text("⚠️ " + failure.message)
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(t.red)
+                        .multilineTextAlignment(.center)
+                    if let url = failure.settingsURL {
+                        Button("Open Settings") { NSWorkspace.shared.open(url) }
+                            .buttonStyle(.link)
+                            .font(.system(size: 11.5, weight: .semibold))
+                    }
+                }
+            } else {
+                Text(footerText)
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(t.dim)
+                    .multilineTextAlignment(.center)
+            }
         }
         .frame(maxWidth: 768)
         .padding(.top, 8)
         .padding(.bottom, 14)
         .padding(.horizontal, 24)
         .frame(maxWidth: .infinity)
+        .onAppear {
+            dictation.onText = { [weak state] text in state?.draft = text }
+            // A draft restored (or seeded) with the caret inside an @query
+            // should offer the picker without waiting for a keystroke.
+            DispatchQueue.main.async { mentionProxy.refreshQuery() }
+        }
+        .onDisappear { dictation.stop() }
+    }
+
+    // MARK: - @mention picker
+
+    private var mentionPicker: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(mentionSuggestions.enumerated()), id: \.offset) { index, mention in
+                Button {
+                    mentionIndex = index
+                    acceptMention()
+                } label: {
+                    HStack(spacing: 9) {
+                        Image(systemName: mention.kind.icon)
+                            .font(.system(size: 11.5, weight: .medium))
+                            .foregroundStyle(t.accent)
+                            .frame(width: 18)
+                        Text(mention.name)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(t.text)
+                        Text(mention.subtitle)
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(t.dim)
+                            .lineLimit(1)
+                        Spacer(minLength: 8)
+                        Text(mention.kind.label)
+                            .font(.system(size: 10.5, weight: .semibold))
+                            .foregroundStyle(t.dim)
+                    }
+                    .padding(.vertical, 7)
+                    .padding(.horizontal, 12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(RoundedRectangle(cornerRadius: 8)
+                        .fill(index == mentionIndex ? t.accentSoft : .clear))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(5)
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(t.card)
+            .shadow(color: .black.opacity(0.18), radius: 10, y: 4))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(t.border))
+    }
+
+    private func acceptMention() {
+        guard mentionSuggestions.indices.contains(mentionIndex) else { return }
+        mentionProxy.insert(mentionSuggestions[mentionIndex], at: mentionStart)
+        closeMentionPicker()
+    }
+
+    private func closeMentionPicker() {
+        mentionSuggestions = []
+        mentionIndex = 0
+    }
+
+    private var footerText: String {
+        if dictation.isActive { return "Listening — speech is transcribed on this Mac. Click the mic to stop." }
+        return state.modelAvailable
+            ? "On-device model: \(LlamaBackend.modelDisplayName) · runs privately on this Mac"
+            : "The assistant needs its on-device model — download it above to start chatting"
+    }
+
+    /// ChatGPT-style "+" menu, with options that fit a teaching assistant.
+    private var plusMenu: some View {
+        Menu {
+            Section("Add") {
+                Button {
+                    openAttachmentPanel()
+                } label: {
+                    Label("Attach file (PDF, text, CSV)…", systemImage: "paperclip")
+                }
+                referenceArtifactMenu
+                Button {
+                    state.setView(.classroom)
+                } label: {
+                    Label("Import roster (CSV)…", systemImage: "person.badge.plus")
+                }
+            }
+            Section("Create") {
+                Button("New rubric") { state.draft = "Draft a 4-level rubric for " }
+                Button("New lesson plan") { state.draft = "Create a lesson plan for " }
+                Button("New exit ticket") { state.draft = "Create a 5-question exit ticket quiz on " }
+                Button("Email to families") { state.draft = "Draft an email to families about " }
+            }
+        } label: {
+            Image(systemName: "plus")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(t.sub)
+                .frame(width: 30, height: 30)
+                .contentShape(Circle())
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .hoverHighlight(radius: 15, hover: t.hover)
+        .help("Add files, reference artifacts, or start a template")
+    }
+
+    @ViewBuilder
+    private var referenceArtifactMenu: some View {
+        let refs: [(ArtifactRef, String)] =
+            state.allRubrics.prefix(5).map { (ArtifactRef(type: .rubric, id: $0.id), $0.title) }
+            + state.allActivities.prefix(5).map { (ArtifactRef(type: .activity, id: $0.id), $0.title) }
+            + state.allQuizzes.prefix(3).map { (ArtifactRef(type: .quiz, id: $0.id), $0.title) }
+            + state.allPogs.prefix(3).map { (ArtifactRef(type: .pog, id: $0.id), $0.title) }
+        if !refs.isEmpty {
+            Menu {
+                ForEach(refs, id: \.0.id) { ref, title in
+                    Button(title) { state.attachArtifact(ref) }
+                }
+            } label: {
+                Label("Reference an artifact", systemImage: "doc.text")
+            }
+        }
+    }
+
+    private func openAttachmentPanel() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = FileAttachment.allowedTypes
+        panel.allowsMultipleSelection = true
+        guard panel.runModal() == .OK else { return }
+        for url in panel.urls {
+            state.attachFile(at: url)
+        }
+    }
+
+    private var attachmentChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(state.pendingAttachments) { attachment in
+                    HStack(spacing: 5) {
+                        Image(systemName: "paperclip")
+                            .font(.system(size: 9, weight: .semibold))
+                        Text(attachment.name)
+                            .font(.system(size: 11.5, weight: .semibold))
+                            .lineLimit(1)
+                        Button {
+                            state.pendingAttachments.removeAll { $0.id == attachment.id }
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 8, weight: .bold))
+                                .frame(width: 18, height: 18)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .foregroundStyle(t.accent)
+                    .padding(.vertical, 4)
+                    .padding(.horizontal, 9)
+                    .background(Capsule().fill(t.accentSoft))
+                }
+            }
+        }
+    }
+
+    /// Picks which class or student this conversation is about; the choice
+    /// is threaded into the model's prompt and remembered per chat.
+    private var contextPicker: some View {
+        Menu {
+            Button("No specific context") { state.setComposerContext(nil) }
+            let classes = state.classroom.classes.filter { !$0.name.isEmpty }
+            if !classes.isEmpty {
+                Section("Classes") {
+                    ForEach(classes) { cls in
+                        Button(cls.name) { state.setComposerContext(cls.name) }
+                    }
+                }
+            }
+            let students = classes.flatMap(\.students).filter { !$0.name.isEmpty }
+            if !students.isEmpty {
+                Section("Students") {
+                    ForEach(students) { s in
+                        Button(s.name) { state.setComposerContext("student \(s.name)") }
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "person")
+                    .font(.system(size: 11, weight: .medium))
+                Text(state.composerContext?.replacingOccurrences(of: "student ", with: "") ?? "Class context")
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .lineLimit(1)
+            }
+            .foregroundStyle(state.composerContext == nil ? t.sub : t.accent)
+            .padding(.horizontal, 10)
+            .frame(height: 30)
+            .background(Capsule().fill(state.composerContext == nil ? .clear : t.accentSoft))
+            .contentShape(Capsule())
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help("Tell the assistant which class or student this chat is about")
+    }
+
+    private func sendFromComposer() {
+        dictation.stop()
+        dictation.clearError()
+        state.send()
+    }
+
+    private var micButton: some View {
+        Button {
+            dictation.toggle(currentText: state.draft)
+        } label: {
+            Image(systemName: dictation.isActive ? "mic.fill" : "mic")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(dictation.isActive ? t.red : t.sub)
+                .frame(width: 30, height: 30)
+                .background(
+                    Circle()
+                        .fill(t.red.opacity(dictation.isActive ? 0.14 : 0))
+                        .scaleEffect(pulse && dictation.isActive ? 1.0 : 0.8)
+                        .animation(dictation.isActive
+                                   ? .easeInOut(duration: 0.7).repeatForever(autoreverses: true)
+                                   : .default,
+                                   value: pulse)
+                )
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .hoverHighlight(radius: 15, hover: t.hover)
+        .help(dictation.isActive ? "Stop dictation" : "Dictate (English)")
+        .onAppear { pulse = true }
+    }
+
+    /// Line-by-line inline markdown (bold/italic/code) that preserves list
+    /// structure — full markdown parsing would collapse the newlines.
+    static func renderMarkdown(_ text: String) -> AttributedString {
+        var result = AttributedString()
+        let lines = text.components(separatedBy: "\n")
+        for (i, line) in lines.enumerated() {
+            var cleaned = line
+            // Simple bullet normalization for common model output.
+            if let r = cleaned.range(of: #"^\s*[\*\-]\s{3,}"#, options: .regularExpression) {
+                cleaned = cleaned.replacingCharacters(in: r, with: "    • ")
+            } else if let r = cleaned.range(of: #"^\s*[\*\-]\s+"#, options: .regularExpression) {
+                cleaned = cleaned.replacingCharacters(in: r, with: "•  ")
+            } else if let r = cleaned.range(of: #"^#{1,4}\s+"#, options: .regularExpression) {
+                cleaned = cleaned.replacingCharacters(in: r, with: "")
+            }
+            if let parsed = try? AttributedString(
+                markdown: cleaned,
+                options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
+                result += parsed
+            } else {
+                result += AttributedString(cleaned)
+            }
+            if i < lines.count - 1 { result += AttributedString("\n") }
+        }
+        return result
+    }
+
+    private struct ThinkingIndicator: View {
+        @State private var phase = false
+
+        var body: some View {
+            HStack(spacing: 5) {
+                ForEach(0..<3, id: \.self) { i in
+                    Circle()
+                        .fill(.secondary)
+                        .frame(width: 6, height: 6)
+                        .opacity(phase ? 0.25 : 0.9)
+                        .animation(
+                            .easeInOut(duration: 0.5).repeatForever(autoreverses: true).delay(Double(i) * 0.16),
+                            value: phase)
+                }
+            }
+            .padding(.vertical, 6)
+            .onAppear { phase = true }
+        }
     }
 
     private func composerIcon(_ systemName: String, help: String) -> some View {

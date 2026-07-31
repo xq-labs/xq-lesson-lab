@@ -1,3 +1,14 @@
 .build/
 *.app
 .DS_Store
+
+# Model weights are distributed via GitHub Releases (downloaded on first
+# launch), never through git — GitHub rejects files over 100 MB.
+TeacherWorkspace/Models/*.gguf
+
+# Local llama.cpp clone + build outputs. Recreate with:
+#   TeacherWorkspace/scripts/setup-vendor.sh
+TeacherWorkspace/vendor/
+
+# Vercel local artifacts
+website/.vercel/

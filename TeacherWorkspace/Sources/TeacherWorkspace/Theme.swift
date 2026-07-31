@@ -30,12 +30,13 @@ struct Theme {
     var sendBg: Color
     var sendFg: Color
     var green: Color
+    var red: Color
     var scrim: Color
     var isDark: Bool
 
     static let dark = Theme(
         bg: Color(hex: 0x212121),
-        side: Color(hex: 0x292928),
+        side: Color(hex: 0x1A1A19),
         card: Color(hex: 0x2E2E2C),
         head: Color(hex: 0x343432),
         border: Color(hex: 0x3B3B38),
@@ -51,6 +52,7 @@ struct Theme {
         sendBg: Color(hex: 0xECECEA),
         sendFg: Color(hex: 0x212121),
         green: Color(hex: 0x5BBA7D),
+        red: Color(hex: 0xE0796C),
         scrim: Color(hex: 0x000000, alpha: 0.55),
         isDark: true
     )
@@ -73,6 +75,7 @@ struct Theme {
         sendBg: Color(hex: 0x3E68CE),
         sendFg: Color(hex: 0xFFFFFF),
         green: Color(hex: 0x4CA46A),
+        red: Color(hex: 0xC0503E),
         scrim: Color(hex: 0x201E18, alpha: 0.35),
         isDark: false
     )

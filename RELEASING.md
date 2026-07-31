@@ -17,17 +17,22 @@ SHA-256 (`AppInfo.modelSHA256`), and installed under
 ## One-time setup
 
 ### 1. Apple Developer Program (blocks everything else)
-- Enroll (or join XQ's existing org account) at developer.apple.com — $99/yr.
-- In Xcode or the developer portal, create a **Developer ID Application**
-  certificate and install it in your keychain. Find its name with:
+Currently on Douglas's personal account — Apple ID `ifdouglas@icloud.com`,
+team ID `6NYH4QMV76`. Switching to an XQ org account later is a normal
+Sparkle update signed by the new cert (same Sparkle key = continuity).
+- Enroll at developer.apple.com/enroll (Individual, $99/yr).
+- After approval: Xcode → Settings → Accounts → ifdouglas@icloud.com →
+  Manage Certificates… → + → **Developer ID Application**. Verify with:
   `security find-identity -v -p codesigning`
 
 ### 2. Notarization credentials
+Create an app-specific password at account.apple.com (Sign-In & Security →
+App-Specific Passwords), then:
 ```bash
 xcrun notarytool store-credentials lessonlab-notary \
-  --apple-id you@xqinstitute.org --team-id TEAMID \
-  --password <app-specific password from appleid.apple.com>
+  --apple-id ifdouglas@icloud.com --team-id 6NYH4QMV76
 ```
+(it prompts for the app-specific password; nothing is stored in the repo)
 
 ### 3. Sparkle signing keys — DONE (2026-07-31, Douglas's Mac)
 Keys were generated with the tools that ship inside the Sparkle SPM artifact
@@ -56,7 +61,7 @@ different Mac means importing it there (`generate_keys -f file`).
    Sparkle compares this one).
 2. ```bash
    cd TeacherWorkspace
-   SIGN_IDENTITY="Developer ID Application: <name> (TEAMID)" \
+   SIGN_IDENTITY="Developer ID Application: Douglas Fernandes (6NYH4QMV76)" \
    NOTARY_PROFILE=lessonlab-notary \
    scripts/make-release.sh
    ```

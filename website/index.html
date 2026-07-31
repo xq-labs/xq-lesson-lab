@@ -19,41 +19,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,480;9..144,560&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
+  /* Dark is the default theme; [data-theme="light"] switches via the nav toggle. */
   :root {
-    --bg: #FBF9F6;
-    --bg-raise: #FFFFFF;
-    --text: #1F1E1A;
-    --sub: #6E6B62;
-    --faint: #9B978C;
-    --border: #E9E5DC;
-    --border-strong: #DDD8CC;
-    --accent: #3E68CE;
-    --accent-deep: #2D51AB;
-    --accent-soft: #EDF1FB;
-    --ring: rgba(62, 104, 206, .25);
-    --shadow-card: 0 1px 2px rgba(31,30,26,.04), 0 8px 24px -12px rgba(31,30,26,.10);
-    --shadow-window: 0 1px 1px rgba(31,30,26,.05), 0 12px 32px -8px rgba(31,30,26,.14), 0 32px 80px -24px rgba(45,81,171,.18);
-    --serif: "Fraunces", ui-serif, Georgia, serif;
-    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #191917;
-      --bg-raise: #232320;
-      --text: #EFEEE9;
-      --sub: #A6A399;
-      --faint: #7C7970;
-      --border: #33322D;
-      --border-strong: #413F38;
-      --accent: #85A3EE;
-      --accent-deep: #6D8FE6;
-      --accent-soft: rgba(125,155,235,.13);
-      --ring: rgba(133,163,238,.3);
-      --shadow-card: 0 1px 2px rgba(0,0,0,.25), 0 8px 24px -12px rgba(0,0,0,.5);
-      --shadow-window: 0 1px 1px rgba(0,0,0,.3), 0 12px 32px -8px rgba(0,0,0,.5), 0 32px 80px -24px rgba(0,0,0,.6);
-    }
-  }
-  :root[data-theme="dark"] {
     --bg: #191917;
     --bg-raise: #232320;
     --text: #EFEEE9;
@@ -67,6 +34,25 @@
     --ring: rgba(133,163,238,.3);
     --shadow-card: 0 1px 2px rgba(0,0,0,.25), 0 8px 24px -12px rgba(0,0,0,.5);
     --shadow-window: 0 1px 1px rgba(0,0,0,.3), 0 12px 32px -8px rgba(0,0,0,.5), 0 32px 80px -24px rgba(0,0,0,.6);
+    --serif: "Fraunces", ui-serif, Georgia, serif;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color-scheme: dark;
+  }
+  :root[data-theme="light"] {
+    --bg: #FBF9F6;
+    --bg-raise: #FFFFFF;
+    --text: #1F1E1A;
+    --sub: #6E6B62;
+    --faint: #9B978C;
+    --border: #E9E5DC;
+    --border-strong: #DDD8CC;
+    --accent: #3E68CE;
+    --accent-deep: #2D51AB;
+    --accent-soft: #EDF1FB;
+    --ring: rgba(62, 104, 206, .25);
+    --shadow-card: 0 1px 2px rgba(31,30,26,.04), 0 8px 24px -12px rgba(31,30,26,.10);
+    --shadow-window: 0 1px 1px rgba(31,30,26,.05), 0 12px 32px -8px rgba(31,30,26,.14), 0 32px 80px -24px rgba(45,81,171,.18);
+    color-scheme: light;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html { scroll-behavior: smooth; }
@@ -87,21 +73,14 @@
     content: ""; position: absolute; left: 50%; top: -320px;
     width: 1100px; height: 780px; transform: translateX(-50%);
     background:
-      radial-gradient(closest-side, rgba(62,104,206,.10), transparent 70%),
-      radial-gradient(600px 420px at 38% 30%, rgba(214,134,58,.07), transparent 70%);
-    filter: blur(2px);
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) .halo::before {
-      background:
-        radial-gradient(closest-side, rgba(125,155,235,.10), transparent 70%),
-        radial-gradient(600px 420px at 38% 30%, rgba(214,134,58,.05), transparent 70%);
-    }
-  }
-  :root[data-theme="dark"] .halo::before {
-    background:
       radial-gradient(closest-side, rgba(125,155,235,.10), transparent 70%),
       radial-gradient(600px 420px at 38% 30%, rgba(214,134,58,.05), transparent 70%);
+    filter: blur(2px);
+  }
+  :root[data-theme="light"] .halo::before {
+    background:
+      radial-gradient(closest-side, rgba(62,104,206,.10), transparent 70%),
+      radial-gradient(600px 420px at 38% 30%, rgba(214,134,58,.07), transparent 70%);
   }
 
   .wrap { max-width: 1020px; margin: 0 auto; padding: 0 28px; }
@@ -140,14 +119,10 @@
   }
   .theme-toggle:hover { background: var(--bg-raise); color: var(--text); }
   .theme-toggle svg { width: 17px; height: 17px; }
-  /* Moon shows in light mode (click → dark); sun shows in dark mode. */
-  .theme-toggle .sun { display: none; }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) .theme-toggle .sun { display: block; }
-    :root:not([data-theme="light"]) .theme-toggle .moon { display: none; }
-  }
-  :root[data-theme="dark"] .theme-toggle .sun { display: block; }
-  :root[data-theme="dark"] .theme-toggle .moon { display: none; }
+  /* Sun shows in dark mode (click → light); moon shows in light mode. */
+  .theme-toggle .moon { display: none; }
+  :root[data-theme="light"] .theme-toggle .moon { display: block; }
+  :root[data-theme="light"] .theme-toggle .sun { display: none; }
 
   /* ---------- hero ---------- */
   header { position: relative; text-align: center; padding: 92px 0 72px; }
@@ -300,8 +275,7 @@
 
 <script>
   try {
-    var t = localStorage.getItem('ll-theme');
-    if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+    if (localStorage.getItem('ll-theme') === 'light') document.documentElement.dataset.theme = 'light';
   } catch (e) {}
 </script>
 
@@ -342,8 +316,8 @@
           <div class="doc">Lesson Lab — Period 2 · Biology</div>
         </div>
         <picture>
-          <source id="shot-dark" srcset="/app-dark.png" media="(prefers-color-scheme: dark)">
-          <img class="shot" src="/app-light.png" width="1440" height="900"
+          <source id="shot-light" srcset="/app-light.png" media="not all">
+          <img class="shot" src="/app-dark.png" width="1440" height="900"
                alt="Lesson Lab app showing a chat that differentiates a photosynthesis lesson — the assistant created a Photosynthesis Choice Board activity card and a Choice Board Product Rubric card, with the class sidebar on the left">
         </picture>
       </div>
@@ -405,40 +379,19 @@
 <script>
   (function () {
     var root = document.documentElement;
-    var toggle = document.getElementById('theme-toggle');
-    var shotDark = document.getElementById('shot-dark');
-    var mq = window.matchMedia('(prefers-color-scheme: dark)');
+    var shotLight = document.getElementById('shot-light');
 
-    function effectiveTheme() {
-      return root.dataset.theme || (mq.matches ? 'dark' : 'light');
-    }
     function syncShot() {
-      // The <source> media query only tracks the system theme, so a manual
-      // choice has to force it on ("all") or off ("not all") explicitly.
-      if (!shotDark) return;
-      if (root.dataset.theme) {
-        shotDark.media = root.dataset.theme === 'dark' ? 'all' : 'not all';
-      } else {
-        shotDark.media = '(prefers-color-scheme: dark)';
-      }
+      shotLight.media = root.dataset.theme === 'light' ? 'all' : 'not all';
     }
     syncShot();
 
-    toggle.addEventListener('click', function () {
-      var next = effectiveTheme() === 'dark' ? 'light' : 'dark';
-      root.dataset.theme = next;
+    document.getElementById('theme-toggle').addEventListener('click', function () {
+      var next = root.dataset.theme === 'light' ? 'dark' : 'light';
+      if (next === 'light') root.dataset.theme = 'light';
+      else delete root.dataset.theme;
       try { localStorage.setItem('ll-theme', next); } catch (e) {}
       syncShot();
-    });
-
-    // A manual pick matching the system preference goes back to auto,
-    // so the page follows the OS again from then on.
-    mq.addEventListener('change', function () {
-      if (root.dataset.theme && root.dataset.theme === (mq.matches ? 'dark' : 'light')) {
-        delete root.dataset.theme;
-        try { localStorage.removeItem('ll-theme'); } catch (e) {}
-        syncShot();
-      }
     });
   })();
 </script>

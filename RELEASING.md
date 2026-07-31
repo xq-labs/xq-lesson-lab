@@ -29,14 +29,15 @@ xcrun notarytool store-credentials lessonlab-notary \
   --password <app-specific password from appleid.apple.com>
 ```
 
-### 3. Sparkle signing keys
-The tools ship in Sparkle's distribution tarball (not the SPM artifact):
-download `Sparkle-2.x.x.tar.xz` from github.com/sparkle-project/Sparkle/releases,
-then run its `bin/generate_keys`. The **private key lands in your keychain**
-(export a backup somewhere safe — losing it strands every installed app on its
-current version). Put the printed **public** key in:
-- the `SPARKLE_ED_PUBLIC_KEY` env var when building releases, and
-- nowhere else — make-app.sh writes it into Info.plist.
+### 3. Sparkle signing keys — DONE (2026-07-31, Douglas's Mac)
+Keys were generated with the tools that ship inside the Sparkle SPM artifact
+(`TeacherWorkspace/.build/artifacts/sparkle/Sparkle/bin/` — also has
+`generate_appcast` and `sign_update`; no separate download needed). The
+public key is baked into make-app.sh; the **private key is in Douglas's
+login keychain** ("Private key for signing Sparkle updates").
+⚠️ Back it up (Keychain Access → export, or `generate_keys -x file`) — losing
+it strands every installed app on its current version. Releasing from a
+different Mac means importing it there (`generate_keys -f file`).
 
 ### 4. GitHub + Vercel
 - Create the public repo `xq-labs/xq-lesson-lab` (or pick another name and
@@ -55,9 +56,8 @@ current version). Put the printed **public** key in:
    Sparkle compares this one).
 2. ```bash
    cd TeacherWorkspace
-   SIGN_IDENTITY="Developer ID Application: XQ Institute (TEAMID)" \
+   SIGN_IDENTITY="Developer ID Application: <name> (TEAMID)" \
    NOTARY_PROFILE=lessonlab-notary \
-   SPARKLE_ED_PUBLIC_KEY="<public key>" \
    scripts/make-release.sh
    ```
    Builds, signs (hardened runtime), notarizes, staples, and produces

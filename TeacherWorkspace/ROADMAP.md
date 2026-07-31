@@ -1,6 +1,6 @@
-# Lesson Lab — Product Roadmap
+# XQ Lesson Lab — Product Roadmap
 
-Goal: turn the Lesson Lab macOS app into a usable product for US teachers.
+Goal: turn the XQ Lesson Lab macOS app into a usable product for US teachers.
 The app is a native SwiftUI app with an **embedded on-device model** (llama.cpp +
 Qwen3.5-2B GGUF, fully offline). Key product angle: **FERPA-friendly — student
 data never leaves the teacher's Mac.**
@@ -179,4 +179,4 @@ data never leaves the teacher's Mac.**
   the process is killed with `__TCC_CRASHING_DUE_TO_PRIVACY_VIOLATION__` rather
   than prompting. `DictationController.isLaunchedAsApp` compares
   `$__CFBundleIdentifier` to the bundle id and refuses early instead. Launch
-  with `open -n "Lesson Lab.app"` when testing anything mic-related.
+  with `open -n "XQ Lesson Lab.app"` when testing anything mic-related.

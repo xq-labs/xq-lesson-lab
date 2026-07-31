@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Builds a release binary and assembles Lesson Lab.app next to this script.
+# Builds a release binary and assembles XQ Lesson Lab.app next to this script.
 #
 # Default is the ship-small build: the model is NOT embedded — the app
 # downloads it on first launch (ModelDownload.swift). Pass --bundle-model to
@@ -23,17 +23,17 @@ MODEL_FILE="Models/Qwen3.5-2B-Q4_K_M.gguf"
 LLAMA_FRAMEWORK="vendor/llama.cpp/build-apple/llama.xcframework/macos-arm64_x86_64/llama.framework"
 SPARKLE_FRAMEWORK=".build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework"
 
-# Single source of truth for version and URLs: AppInfo.swift.
+# Single source of truth for name, version and URLs: AppInfo.swift.
+PRODUCT_NAME=$(sed -n 's/.*static let productName = "\(.*\)"/\1/p' Sources/TeacherWorkspace/AppInfo.swift)
 VERSION=$(sed -n 's/.*static let version = "\(.*\)"/\1/p' Sources/TeacherWorkspace/AppInfo.swift)
 BUILD=$(sed -n 's/.*static let build = \([0-9]*\)/\1/p' Sources/TeacherWorkspace/AppInfo.swift)
 WEBSITE_URL=$(sed -n 's/.*static let websiteURL = "\(.*\)"/\1/p' Sources/TeacherWorkspace/AppInfo.swift)
 APPCAST_URL="$WEBSITE_URL/appcast.xml"
-[[ -n "$VERSION" && -n "$BUILD" && -n "$WEBSITE_URL" ]] || { echo "Couldn't read version/build/websiteURL from AppInfo.swift"; exit 1; }
+[[ -n "$PRODUCT_NAME" && -n "$VERSION" && -n "$BUILD" && -n "$WEBSITE_URL" ]] || { echo "Couldn't read productName/version/build/websiteURL from AppInfo.swift"; exit 1; }
 
-# Sparkle EdDSA public key for update verification. Placeholder until the
-# real key exists (RELEASING.md § Sparkle keys) — updates can't verify
-# without it, but the app runs fine.
-SPARKLE_PUBLIC_KEY="${SPARKLE_ED_PUBLIC_KEY:-REPLACE_WITH_SPARKLE_ED_PUBLIC_KEY}"
+# Sparkle EdDSA public key for update verification (safe to commit — the
+# matching private key lives in the login keychain; RELEASING.md § Sparkle).
+SPARKLE_PUBLIC_KEY="${SPARKLE_ED_PUBLIC_KEY:-hilkGndELmBDcg2mWemtLWu6hWoNZtiLtJy0z7l0Ef0=}"
 
 [[ -d "$LLAMA_FRAMEWORK" ]] || { echo "Missing $LLAMA_FRAMEWORK — run scripts/setup-vendor.sh"; exit 1; }
 if [[ $BUNDLE_MODEL == 1 && ! -f "$MODEL_FILE" ]]; then
@@ -42,7 +42,7 @@ fi
 
 swift build -c release
 
-APP="Lesson Lab.app"
+APP="$PRODUCT_NAME.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
 cp .build/release/TeacherWorkspace "$APP/Contents/MacOS/TeacherWorkspace"
@@ -73,9 +73,9 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CFBundleIdentifier</key>
     <string>org.xqinstitute.lesson-lab</string>
     <key>CFBundleName</key>
-    <string>Lesson Lab</string>
+    <string>$PRODUCT_NAME</string>
     <key>CFBundleDisplayName</key>
-    <string>Lesson Lab</string>
+    <string>$PRODUCT_NAME</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundleIconName</key>
@@ -93,9 +93,9 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
     <key>NSMicrophoneUsageDescription</key>
-    <string>Lesson Lab uses the microphone for on-device dictation into the chat composer.</string>
+    <string>$PRODUCT_NAME uses the microphone for on-device dictation into the chat composer.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
-    <string>Lesson Lab transcribes your dictation on this Mac — audio never leaves the device.</string>
+    <string>$PRODUCT_NAME transcribes your dictation on this Mac — audio never leaves the device.</string>
     <key>SUFeedURL</key>
     <string>$APPCAST_URL</string>
     <key>SUPublicEDKey</key>

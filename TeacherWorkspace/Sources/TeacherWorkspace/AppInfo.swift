@@ -4,7 +4,7 @@ import Foundation
 /// user-visible mention reads from here instead of hardcoding a string —
 /// renaming again means editing this file plus the plist in make-app.sh.
 enum AppInfo {
-    static let productName = "Lesson Lab"
+    static let productName = "XQ Lesson Lab"
 
     /// Marketing version + build number. make-app.sh reads these into the
     /// Info.plist, and the appcast must match — bump both here per release.

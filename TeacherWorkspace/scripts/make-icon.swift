@@ -1,10 +1,12 @@
 #!/usr/bin/env swift
-// Draws the Lesson Lab app icon with CoreGraphics and emits an .icns (plus a
+// Draws the XQ Lesson Lab app icon with CoreGraphics and emits an .icns (plus a
 // 1024px preview PNG). Vector at every size — each iconset entry is rendered
 // fresh rather than downsampled, so the 16pt version stays crisp.
 //
-//   swift scripts/make-icon.swift [concept] [outputDir]
+//   swift scripts/make-icon.swift [concept] [outputDir] [--web]
 //     concept: book (default, shipped) | flask | ink
+//     --web:   emit the landing page's PNGs (favicon, touch icon, og image)
+//              instead of an .icns
 //
 import AppKit
 

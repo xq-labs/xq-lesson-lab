@@ -5,7 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lesson Lab — private AI planning for teachers</title>
 <meta name="description" content="An AI teaching assistant that runs entirely on your Mac. Rubrics, lesson plans, quizzes, and family emails — nothing you type ever leaves your computer.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧪</text></svg>">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Lesson Lab">
+<meta property="og:title" content="Lesson Lab — private AI planning for teachers">
+<meta property="og:description" content="An AI teaching assistant that runs entirely on your Mac. Rubrics, lesson plans, quizzes, and family emails — nothing you type ever leaves your computer.">
+<meta property="og:url" content="https://xq-lesson-lab.vercel.app">
+<meta property="og:image" content="https://xq-lesson-lab.vercel.app/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://xq-lesson-lab.vercel.app/og-image.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,480;9..144,560&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -28,7 +37,7 @@
     --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
   @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-theme="light"]) {
       --bg: #191917;
       --bg-raise: #232320;
       --text: #EFEEE9;
@@ -43,6 +52,21 @@
       --shadow-card: 0 1px 2px rgba(0,0,0,.25), 0 8px 24px -12px rgba(0,0,0,.5);
       --shadow-window: 0 1px 1px rgba(0,0,0,.3), 0 12px 32px -8px rgba(0,0,0,.5), 0 32px 80px -24px rgba(0,0,0,.6);
     }
+  }
+  :root[data-theme="dark"] {
+    --bg: #191917;
+    --bg-raise: #232320;
+    --text: #EFEEE9;
+    --sub: #A6A399;
+    --faint: #7C7970;
+    --border: #33322D;
+    --border-strong: #413F38;
+    --accent: #85A3EE;
+    --accent-deep: #6D8FE6;
+    --accent-soft: rgba(125,155,235,.13);
+    --ring: rgba(133,163,238,.3);
+    --shadow-card: 0 1px 2px rgba(0,0,0,.25), 0 8px 24px -12px rgba(0,0,0,.5);
+    --shadow-window: 0 1px 1px rgba(0,0,0,.3), 0 12px 32px -8px rgba(0,0,0,.5), 0 32px 80px -24px rgba(0,0,0,.6);
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html { scroll-behavior: smooth; }
@@ -68,11 +92,16 @@
     filter: blur(2px);
   }
   @media (prefers-color-scheme: dark) {
-    .halo::before {
+    :root:not([data-theme="light"]) .halo::before {
       background:
         radial-gradient(closest-side, rgba(125,155,235,.10), transparent 70%),
         radial-gradient(600px 420px at 38% 30%, rgba(214,134,58,.05), transparent 70%);
     }
+  }
+  :root[data-theme="dark"] .halo::before {
+    background:
+      radial-gradient(closest-side, rgba(125,155,235,.10), transparent 70%),
+      radial-gradient(600px 420px at 38% 30%, rgba(214,134,58,.05), transparent 70%);
   }
 
   .wrap { max-width: 1020px; margin: 0 auto; padding: 0 28px; }
@@ -93,7 +122,7 @@
     font-family: var(--serif); font-weight: 560; font-size: 19px;
     letter-spacing: -0.01em; color: var(--text); text-decoration: none;
   }
-  .brand .mark { font-size: 22px; line-height: 1; }
+  .brand .mark { width: 26px; height: 26px; display: block; }
   .nav-cta {
     font-size: 14px; font-weight: 600; color: var(--accent);
     text-decoration: none; padding: 8px 16px; border-radius: 99px;
@@ -101,9 +130,31 @@
     transition: background .18s, color .18s;
   }
   .nav-cta:hover { background: var(--accent-soft); }
+  .nav-actions { display: flex; align-items: center; gap: 10px; }
+  .theme-toggle {
+    display: grid; place-items: center;
+    width: 36px; height: 36px; border-radius: 99px;
+    background: none; border: 1px solid var(--border-strong);
+    color: var(--sub); cursor: pointer;
+    transition: background .18s, color .18s, border-color .18s;
+  }
+  .theme-toggle:hover { background: var(--bg-raise); color: var(--text); }
+  .theme-toggle svg { width: 17px; height: 17px; }
+  /* Moon shows in light mode (click → dark); sun shows in dark mode. */
+  .theme-toggle .sun { display: none; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .theme-toggle .sun { display: block; }
+    :root:not([data-theme="light"]) .theme-toggle .moon { display: none; }
+  }
+  :root[data-theme="dark"] .theme-toggle .sun { display: block; }
+  :root[data-theme="dark"] .theme-toggle .moon { display: none; }
 
   /* ---------- hero ---------- */
   header { position: relative; text-align: center; padding: 92px 0 72px; }
+  .hero-icon {
+    width: 108px; height: 108px; display: block; margin: 0 auto 26px;
+    filter: drop-shadow(0 10px 24px rgba(45,81,171,.28));
+  }
   .eyebrow {
     display: inline-flex; align-items: center; gap: 8px;
     font-size: 13px; font-weight: 500; letter-spacing: .02em;
@@ -152,7 +203,7 @@
   /* ---------- app window ---------- */
   .window-stage { position: relative; margin-top: 72px; }
   .window {
-    max-width: 780px; margin: 0 auto; text-align: left;
+    max-width: 930px; margin: 0 auto; text-align: left;
     background: var(--bg-raise); border: 1px solid var(--border);
     border-radius: 16px; box-shadow: var(--shadow-window);
     overflow: hidden;
@@ -172,48 +223,9 @@
     color: var(--faint); letter-spacing: .01em;
     margin-right: 47px; /* balance traffic lights */
   }
-  .chat { padding: 24px 26px 26px; display: grid; gap: 16px; }
-  .msg { max-width: 78%; font-size: 13.5px; line-height: 1.55; }
-  .msg.user {
-    justify-self: end; background: var(--accent-soft);
-    color: var(--text); padding: 10px 15px; border-radius: 14px 14px 4px 14px;
-  }
-  .msg.user b { color: var(--accent-deep); font-weight: 600; }
-  .msg.app { justify-self: start; width: 100%; max-width: 100%; }
-  .msg.app .say { color: var(--sub); margin-bottom: 12px; }
-  .card {
-    border: 1px solid var(--border-strong); border-radius: 12px;
-    overflow: hidden; box-shadow: var(--shadow-card);
-  }
-  .card-head {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 11px 16px; border-bottom: 1px solid var(--border);
-    background: color-mix(in srgb, var(--bg) 45%, var(--bg-raise));
-  }
-  .card-head .t { font-weight: 600; font-size: 13px; letter-spacing: .01em; }
-  .chip {
-    font-size: 10.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
-    color: var(--accent-deep); background: var(--accent-soft);
-    padding: 3.5px 9px; border-radius: 99px;
-  }
-  .card table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .card th, .card td { text-align: left; padding: 9px 16px; border-top: 1px solid var(--border); }
-  .card th { border-top: 0; color: var(--faint); font-weight: 500; font-size: 11px; letter-spacing: .03em; text-transform: uppercase; }
-  .card td:first-child { font-weight: 600; white-space: nowrap; }
-  .card td { color: var(--sub); }
-  .composer {
-    display: flex; align-items: center; gap: 10px;
-    border: 1px solid var(--border-strong); border-radius: 12px;
-    padding: 11px 16px; color: var(--faint); font-size: 13px;
-    background: color-mix(in srgb, var(--bg) 35%, var(--bg-raise));
-  }
-  .composer .caret {
-    width: 1.5px; height: 15px; background: var(--accent);
-    animation: blink 1.1s steps(1) infinite;
-  }
-  @keyframes blink { 50% { opacity: 0; } }
+  .window .shot { display: block; width: 100%; height: auto; }
   .offline-pill {
-    position: absolute; right: max(12px, calc(50% - 470px)); top: -14px;
+    position: absolute; right: max(12px, calc(50% - 545px)); top: -14px;
     display: inline-flex; align-items: center; gap: 7px;
     background: var(--bg-raise); border: 1px solid var(--border);
     border-radius: 99px; padding: 7px 14px;
@@ -278,8 +290,6 @@
   @media (max-width: 560px) {
     header { padding: 64px 0 56px; }
     .offline-pill { display: none; }
-    .msg { max-width: 92%; }
-    .card th:nth-child(3), .card td:nth-child(3) { display: none; }
   }
   @media (prefers-reduced-motion: reduce) {
     * { animation: none !important; transition: none !important; }
@@ -288,16 +298,30 @@
 </head>
 <body>
 
+<script>
+  try {
+    var t = localStorage.getItem('ll-theme');
+    if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+  } catch (e) {}
+</script>
+
 <nav>
   <div class="wrap nav-inner">
-    <a class="brand" href="#"><span class="mark">🧪</span>Lesson Lab</a>
-    <a class="nav-cta" href="https://github.com/xq-labs/xq-lesson-lab/releases/latest/download/Lesson-Lab.dmg">Download</a>
+    <a class="brand" href="#"><img class="mark" src="/icon-512.png" alt="" width="26" height="26">Lesson Lab</a>
+    <div class="nav-actions">
+      <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch between dark and light mode">
+        <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+      <a class="nav-cta" href="https://github.com/xq-labs/xq-lesson-lab/releases/latest/download/Lesson-Lab.dmg">Download</a>
+    </div>
   </div>
 </nav>
 
 <header>
   <div class="halo"></div>
   <div class="wrap">
+    <img class="hero-icon" src="/icon-512.png" alt="Lesson Lab app icon" width="108" height="108">
     <span class="eyebrow"><span class="dot"></span>Runs 100% on your Mac — nothing leaves your computer</span>
     <h1>The AI planning assistant made <em>for teachers</em>.</h1>
     <p class="tagline">Rubrics, lesson plans, quizzes, and family emails — drafted with an assistant that knows your classroom and works completely offline.</p>
@@ -312,30 +336,16 @@
 
     <div class="window-stage">
       <span class="offline-pill"><span class="dot"></span>Working offline</span>
-      <div class="window" role="img" aria-label="Lesson Lab app window showing a chat where a rubric card is generated for a student project">
+      <div class="window">
         <div class="titlebar">
           <div class="traffic"><span></span><span></span><span></span></div>
-          <div class="doc">Lesson Lab — Period 3 · Biology</div>
+          <div class="doc">Lesson Lab — Period 2 · Biology</div>
         </div>
-        <div class="chat">
-          <div class="msg user">Make a rubric for the ecosystems poster project — keep <b>@Maya</b>'s reading level in mind.</div>
-          <div class="msg app">
-            <p class="say">Here's a draft rubric with simplified criteria language. I saved it to your Rubrics library — tap any cell to edit.</p>
-            <div class="card">
-              <div class="card-head">
-                <span class="t">Ecosystems Poster — Rubric</span>
-                <span class="chip">Saved</span>
-              </div>
-              <table>
-                <tr><th>Criteria</th><th>Proficient</th><th>Developing</th></tr>
-                <tr><td>Science ideas</td><td>Explains how energy moves through the ecosystem</td><td>Names parts of the ecosystem</td></tr>
-                <tr><td>Vocabulary</td><td>Uses 5+ unit words correctly</td><td>Uses some unit words</td></tr>
-                <tr><td>Presentation</td><td>Clear, labeled, easy to follow</td><td>Some labels missing</td></tr>
-              </table>
-            </div>
-          </div>
-          <div class="composer">Ask anything about your classes…<span class="caret"></span></div>
-        </div>
+        <picture>
+          <source id="shot-dark" srcset="/app-dark.png" media="(prefers-color-scheme: dark)">
+          <img class="shot" src="/app-light.png" width="1440" height="900"
+               alt="Lesson Lab app showing a chat that differentiates a photosynthesis lesson — the assistant created a Photosynthesis Choice Board activity card and a Choice Board Product Rubric card, with the class sidebar on the left">
+        </picture>
       </div>
     </div>
   </div>
@@ -391,6 +401,47 @@
     Built by <a href="https://xqinstitute.org">XQ Institute</a> · Updates are delivered automatically inside the app
   </div>
 </footer>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var toggle = document.getElementById('theme-toggle');
+    var shotDark = document.getElementById('shot-dark');
+    var mq = window.matchMedia('(prefers-color-scheme: dark)');
+
+    function effectiveTheme() {
+      return root.dataset.theme || (mq.matches ? 'dark' : 'light');
+    }
+    function syncShot() {
+      // The <source> media query only tracks the system theme, so a manual
+      // choice has to force it on ("all") or off ("not all") explicitly.
+      if (!shotDark) return;
+      if (root.dataset.theme) {
+        shotDark.media = root.dataset.theme === 'dark' ? 'all' : 'not all';
+      } else {
+        shotDark.media = '(prefers-color-scheme: dark)';
+      }
+    }
+    syncShot();
+
+    toggle.addEventListener('click', function () {
+      var next = effectiveTheme() === 'dark' ? 'light' : 'dark';
+      root.dataset.theme = next;
+      try { localStorage.setItem('ll-theme', next); } catch (e) {}
+      syncShot();
+    });
+
+    // A manual pick matching the system preference goes back to auto,
+    // so the page follows the OS again from then on.
+    mq.addEventListener('change', function () {
+      if (root.dataset.theme && root.dataset.theme === (mq.matches ? 'dark' : 'light')) {
+        delete root.dataset.theme;
+        try { localStorage.removeItem('ll-theme'); } catch (e) {}
+        syncShot();
+      }
+    });
+  })();
+</script>
 
 </body>
 </html>

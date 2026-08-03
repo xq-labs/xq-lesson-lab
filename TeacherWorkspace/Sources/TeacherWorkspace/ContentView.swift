@@ -186,6 +186,9 @@ struct ContentView: View {
         case .quizzes: QuizzesView()
         case .integrations: IntegrationsView()
         case .classroom: ClassroomView()
+        case .learnerProfiles: LearnerProfileView()
+        case .communityGraph: CommunityGraphView()
+        case .matcher: MatcherView()
         }
     }
 }

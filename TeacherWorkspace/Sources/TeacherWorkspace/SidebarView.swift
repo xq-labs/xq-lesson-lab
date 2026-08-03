@@ -98,6 +98,9 @@ struct SidebarView: View {
             navButton("Rubrics", icon: "tablecells", isActive: state.view == .rubrics) { state.setView(.rubrics) }
             navButton("Activities", icon: "triangle", isActive: state.view == .activities) { state.setView(.activities) }
             navButton("Portraits of a Graduate", icon: "person", isActive: state.view == .pogs) { state.setView(.pogs) }
+            navButton("Learner Profiles", icon: "chart.pie", isActive: state.view == .learnerProfiles) { state.setView(.learnerProfiles) }
+            navButton("Community Graph", icon: "point.3.connected.trianglepath.dotted", isActive: state.view == .communityGraph) { state.setView(.communityGraph) }
+            navButton("Project Matcher", icon: "target", isActive: state.view == .matcher) { state.setView(.matcher) }
             navButton("Quizzes", icon: "checklist", isActive: state.view == .quizzes) { state.setView(.quizzes) }
             navButton("Plugins", icon: "circle.circle", isActive: state.view == .integrations) { state.setView(.integrations) }
         }

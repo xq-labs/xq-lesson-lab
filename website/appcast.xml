@@ -3,6 +3,18 @@
     <channel>
         <title>XQ Lesson Lab</title>
         <item>
+            <title>1.0.1</title>
+            <pubDate>Tue, 04 Aug 2026 12:22:21 -0300</pubDate>
+            <sparkle:version>2</sparkle:version>
+            <sparkle:shortVersionString>1.0.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <enclosure url="https://github.com/xq-labs/xq-lesson-lab/releases/download/v1.0.1/Lesson-Lab-1.0.1.zip" length="5722376" type="application/octet-stream" sparkle:edSignature="Z9nkUp1I1dM9uTaEcAU0qBEvj+a57DhUYf8ucL6MFJNXllGXsNwg5UVsrEwNBh+LDZ1gy/U/o71f731/7hLmBg=="/>
+            <sparkle:deltas>
+                <enclosure url="https://github.com/xq-labs/xq-lesson-lab/releases/download/v1.0.1/XQ.Lesson.Lab2-1.delta" sparkle:deltaFrom="1" length="144478" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="XBCV70ax5St4F7J2zlW+zs9wlbUfMq1k89DE49ZhS0qjxrIDnVYn2260DXlo1AbUeUcowMwYTcJGsLbEXxx2AQ=="/>
+            </sparkle:deltas>
+        </item>
+        <item>
             <title>1.0</title>
             <pubDate>Fri, 31 Jul 2026 16:49:48 -0300</pubDate>
             <sparkle:version>1</sparkle:version>

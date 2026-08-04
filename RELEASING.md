@@ -31,7 +31,7 @@ the new cert (same Sparkle key = continuity).
 Create an app-specific password at account.apple.com (Sign-In & Security →
 App-Specific Passwords), then:
 ```bash
-xcrun notarytool store-credentials lessonlab-notary \
+xcrun notarytool store-credentials xq-lesson-lab \
   --apple-id ifdouglas@icloud.com --team-id 6NYH4QMV76
 ```
 (it prompts for the app-specific password; nothing is stored in the repo)
@@ -64,7 +64,7 @@ different Mac means importing it there (`generate_keys -f file`).
 2. ```bash
    cd TeacherWorkspace
    SIGN_IDENTITY="Developer ID Application: Douglas Fernandes (6NYH4QMV76)" \
-   NOTARY_PROFILE=lessonlab-notary \
+   NOTARY_PROFILE=xq-lesson-lab \
    scripts/make-release.sh
    ```
    Builds, signs (hardened runtime), notarizes, staples, and produces
@@ -72,7 +72,15 @@ different Mac means importing it there (`generate_keys -f file`).
 3. Run the `generate_appcast` command the script prints — it signs the zip
    with your private key and emits `appcast.xml` (+ `.delta` files against
    the previous release, which is what keeps updates small).
-4. Copy the generated `appcast.xml` over `website/appcast.xml`, commit, and
+   Two fixups the generator can't know about: it rewrites *every* entry's URL
+   with the prefix you pass, so restore the **previous** release's enclosure
+   URL (and `pubDate`) from the live `website/appcast.xml` — its zip still
+   lives under the old tag. And GitHub replaces spaces in asset filenames with
+   dots on upload, so the delta lands as `XQ.Lesson.Lab2-1.delta`; point the
+   `sparkle:deltas` enclosure at that name, not the percent-encoded one.
+4. Publish the GitHub release **before** the appcast (step 5 then step 4) —
+   otherwise the feed advertises downloads that 404 until the upload lands.
+   Copy the generated `appcast.xml` over `website/appcast.xml`, commit, and
    let Vercel redeploy (auto on push). The "Version X · <date>" line inside the
    landing page's download buttons reads that same file at page load, so
    this step is the only thing that keeps it current — no separate edit. (The

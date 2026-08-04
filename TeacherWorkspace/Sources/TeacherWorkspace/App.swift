@@ -125,6 +125,36 @@ struct LessonLabApp: App {
             exit(0)
         }
 
+        // Skill Check export test: TW_EXPORT_EVAL_PDF=<path> renders a canned
+        // evaluation to PDF and prints the Markdown form, so both exports can
+        // be checked without clicking through the screen.
+        if let path = env["TW_EXPORT_EVAL_PDF"] {
+            guard let (framework, _) = try? FrameworkImport.load(),
+                  let skill = framework.componentSkills.first(where: { $0.id == "FK.AC.2.c" }) else {
+                print("EXPORT: framework unavailable")
+                exit(1)
+            }
+            let sample = SkillEvaluation(
+                id: "eval-export", createdAt: Date(timeIntervalSince1970: 0),
+                workLabel: "Mural response", workSnippet: "The mural on 14th Street…",
+                workCharacterCount: 1388, sourceName: "essay.txt",
+                skillId: skill.id, competencyId: skill.competencyId,
+                skillName: skill.name, competencyName: skill.competencyName,
+                frameworkVersion: framework.version,
+                levelOrdinal: 4, levelLabel: framework.levelLabel(4),
+                levelDescriptor: skill.rung(4)?.descriptor ?? "",
+                evidence: ["The mural kept the strike visible after the newspapers stopped covering it."],
+                nextStep: "To move toward the next level, connect the mural to a second work.",
+                hasMixedEvidence: false, isOffTopic: false, teacherLevel: nil)
+            MainActor.assumeIsolated {
+                ArtifactExport.writePDF(
+                    view: PrintableEvaluationView(evaluation: sample, framework: framework),
+                    to: URL(fileURLWithPath: path))
+            }
+            print(ArtifactExport.markdown(evaluation: sample, framework: framework))
+            exit(0)
+        }
+
         // Folder test: TW_FOLDER_TEST=1 exercises create/move/rename/delete and
         // checks the folders survive a save + reload of the JSON store.
         if env["TW_FOLDER_TEST"] != nil {

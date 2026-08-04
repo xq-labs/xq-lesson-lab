@@ -59,6 +59,16 @@ different Mac means importing it there (`generate_keys -f file`).
 
 ## Every release
 
+0. Pre-flight checks (both exit non-zero on a problem):
+   ```bash
+   cd TeacherWorkspace
+   swift build
+   TW_FRAMEWORK_CHECK=1 .build/debug/TeacherWorkspace     # 5/13/37/115, no orphans
+   TW_STORE=<a store.json from the previous version> TW_STORE_CHECK=1 .build/debug/TeacherWorkspace
+   ```
+   The second one matters whenever `PersistedState` changed: a field added
+   without `?` makes the whole document fail to decode, and `load()` swallows
+   that and hands the teacher an empty app.
 1. Bump `AppInfo.version` (marketing) and `AppInfo.build` (monotonic integer —
    Sparkle compares this one).
 2. ```bash

@@ -474,6 +474,13 @@ struct SettingsPopover: View {
                     .foregroundStyle(t.sub)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            // CC BY 4.0 requires attribution wherever the framework is used —
+            // this is the app-wide statement of it, alongside the copies on
+            // the Skill Check screen and its exports.
+            Text("Skill Check uses the XQ Competencies, © XQ Institute, licensed CC BY 4.0.")
+                .font(.system(size: 10.5))
+                .foregroundStyle(t.dim)
+                .fixedSize(horizontal: false, vertical: true)
             // Reads as a row you can click, not a line of prose: same icon,
             // weight and hover fill as the sidebar nav, plus a chevron for
             // "this goes somewhere". Negative inset lets the fill run wider

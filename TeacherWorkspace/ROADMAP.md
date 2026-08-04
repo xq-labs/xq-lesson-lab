@@ -63,6 +63,33 @@ data never leaves the teacher's Mac.**
 - [ ] FERPA story surfaced in UI (empty states, About): "runs privately on this
       Mac"; audit that no student data leaves the device
 
+## Skill Check (Aug 4, 2026)
+
+- [x] **XQ competency framework bundled** — `xq-labs/xq-competencies` v1.1.0
+   vendored into `Resources/XQFramework/` (5 outcomes / 13 domains / 37
+   competencies / 115 component skills, 4 progression rungs each, CC BY 4.0).
+   Bundled rather than downloaded: 180KB, yearly cadence, and it keeps the
+   screen working on a school network that blocks GitHub. `TW_FRAMEWORK_CHECK=1`
+   asserts it parses clean.
+- [x] **Skill Check screen** (`SkillCheckView.swift`) — paste/open/drop a piece
+   of student work, pick a component skill, get a placement on that skill's
+   progression with the student's own sentences as evidence and one sentence of
+   next step. Saved, not linked to a student. Explicit save; teacher can move
+   the placement.
+- [x] **Staged evaluation** (`EvaluationPipeline.swift`) — five small calls per
+   skill rather than one large one, reconciled in Swift. Evidence is a sentence
+   *index*, so a fabricated quote isn't representable. `TW_EVAL_FILE` +
+   `TW_EVAL_RUNS` reports the spread across runs and fails if a placement moves.
+   This is the direct application of the standards-alignment principle below:
+   curated data, model judgment only.
+- [x] **Per-call generation options** (`GenerationOptions`) — greedy sampling,
+   fixed seed, token ceilings, stop strings, assistant prefill. Placement was
+   unreproducible without it.
+- Known limits: the relevance stage is advisory (it over-accepts, so a
+   mismatched skill lands at level 1 flagged rather than being refused); the
+   ladder is sometimes non-monotonic and that's surfaced as "mixed evidence";
+   auto-suggestion of skills is lexical only.
+
 ## Phase 3 — Teaching value
 
 - [x] New artifact types (July 31): `quiz` (questions/choices/answers; Quizzes

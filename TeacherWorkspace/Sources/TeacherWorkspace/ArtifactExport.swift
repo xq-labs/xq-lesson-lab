@@ -88,9 +88,23 @@ enum ArtifactExport {
 
     /// Split from savePDF so automated tests can render without a dialog.
     static func writePDF(for ref: ArtifactRef, state: AppState, to url: URL) {
-        let content = PrintableArtifactView(ref: ref, state: state)
-            .frame(width: 612)
-        let renderer = ImageRenderer(content: content)
+        writePDF(view: PrintableArtifactView(ref: ref, state: state), to: url)
+    }
+
+    /// Ask where to save, then render any print view. The artifact path had
+    /// this inline; a Skill Check isn't an artifact but wants the same page.
+    static func savePDF<V: View>(view: V, title: String) {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.pdf]
+        panel.nameFieldStringValue = title.replacingOccurrences(of: "/", with: "-") + ".pdf"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        writePDF(view: view, to: url)
+        NSWorkspace.shared.activateFileViewerSelecting([url])
+    }
+
+    /// US-Letter width, content-sized single page.
+    static func writePDF<V: View>(view: V, to url: URL) {
+        let renderer = ImageRenderer(content: view.frame(width: 612))
         renderer.proposedSize = ProposedViewSize(width: 612, height: nil)
         renderer.render { size, renderIn in
             var mediaBox = CGRect(origin: .zero, size: size)
@@ -100,6 +114,93 @@ enum ArtifactExport {
             ctx.endPDFPage()
             ctx.closePDF()
         }
+    }
+
+    // MARK: - Skill checks
+
+    static func markdown(evaluation e: SkillEvaluation, framework: XQFramework?) -> String {
+        var out = "# \(e.workLabel)\n\n"
+        out += "**\(e.competencyName) — \(e.skillName)**\n\n"
+        out += "## \(e.levelLabel)\n\n\(e.levelDescriptor)\n\n"
+        if e.teacherLevel != nil {
+            out += "_Placed here by the teacher; the check suggested \(e.levelLabel)._\n\n"
+        }
+        if !e.evidence.isEmpty {
+            out += "## Why\n\n"
+            for quote in e.evidence { out += "> \(quote)\n\n" }
+        }
+        if let next = e.nextStep { out += "## Next step\n\n\(next)\n\n" }
+        if e.hasMixedEvidence { out += "_The rungs disagreed with each other — this placement is marginal._\n\n" }
+        if e.isOffTopic { out += "_This work may not be about this skill._\n\n" }
+        out += "---\n\n\(framework?.attribution ?? "XQ Competencies · © XQ Institute · CC BY 4.0")\n"
+        return out
+    }
+}
+
+/// Print-styled rendition of a saved Skill Check.
+struct PrintableEvaluationView: View {
+    var evaluation: SkillEvaluation
+    var framework: XQFramework?
+
+    private let ink = Color.black
+    private let faint = Color(white: 0.35)
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(evaluation.workLabel)
+                .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(ink)
+            Text("\(evaluation.competencyName) — \(evaluation.skillName)")
+                .font(.system(size: 12))
+                .foregroundStyle(faint)
+
+            Text(framework?.levelLabel(evaluation.effectiveLevel) ?? evaluation.levelLabel)
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(ink)
+                .padding(.top, 6)
+            Text(evaluation.levelDescriptor)
+                .font(.system(size: 12))
+                .foregroundStyle(ink)
+
+            if !evaluation.evidence.isEmpty {
+                Text("Why")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(ink)
+                    .padding(.top, 6)
+                ForEach(Array(evaluation.evidence.enumerated()), id: \.offset) { _, quote in
+                    Text("\u{201C}\(quote)\u{201D}")
+                        .font(.system(size: 12))
+                        .foregroundStyle(ink)
+                }
+            }
+
+            if let next = evaluation.nextStep {
+                Text("Next step")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(ink)
+                    .padding(.top, 6)
+                Text(next)
+                    .font(.system(size: 12))
+                    .foregroundStyle(ink)
+            }
+
+            if !evaluation.isConfident {
+                Text(evaluation.isOffTopic
+                     ? "This work may not be about this skill."
+                     : "The rungs disagreed with each other — this placement is marginal.")
+                    .font(.system(size: 10))
+                    .foregroundStyle(faint)
+                    .padding(.top, 6)
+            }
+
+            Text("A draft judgment, made on this Mac. \(framework?.attribution ?? "")")
+                .font(.system(size: 9))
+                .foregroundStyle(Color(white: 0.6))
+                .padding(.top, 10)
+        }
+        .padding(40)
+        .frame(width: 612, alignment: .leading)
+        .background(Color.white)
     }
 }
 

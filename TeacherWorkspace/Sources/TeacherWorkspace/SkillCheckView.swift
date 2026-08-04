@@ -20,6 +20,8 @@ struct SkillCheckView: View {
     @State private var skillQuery = ""
     @State private var intakeProblem: String?
     @State private var isTargetedForDrop = false
+    /// A saved check being read back, as opposed to one just produced.
+    @State private var openedEvaluation: SkillEvaluation?
 
     private enum Mode { case list, run }
 
@@ -75,7 +77,10 @@ struct SkillCheckView: View {
                         ForEach(state.skillEvaluations) { evaluation in
                             LibraryCard(title: evaluation.title,
                                         sub: evaluation.sub,
-                                        meta: evaluation.meta) {}
+                                        meta: evaluation.meta) {
+                                openedEvaluation = evaluation
+                                mode = .run
+                            }
                                 .overlay(alignment: .topTrailing) {
                                     if !evaluation.isConfident {
                                         Image(systemName: "exclamationmark.triangle.fill")
@@ -107,6 +112,7 @@ struct SkillCheckView: View {
                 HStack {
                     Button {
                         runner.reset()
+                        openedEvaluation = nil
                         mode = .list
                     } label: {
                         Label("Saved checks", systemImage: "chevron.left")
@@ -117,7 +123,7 @@ struct SkillCheckView: View {
                     Spacer()
                 }
 
-                if let result = runner.result {
+                if let result = openedEvaluation ?? runner.result {
                     resultCard(result)
                 } else {
                     workSection
@@ -399,24 +405,41 @@ struct SkillCheckView: View {
             }
 
             HStack(spacing: 12) {
-                Button {
-                    save(result)
-                } label: {
-                    Text("Save this check")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(t.sendFg)
-                        .padding(.vertical, 9)
-                        .padding(.horizontal, 18)
-                        .background(Capsule().fill(t.sendBg))
-                }
-                .buttonStyle(.plain)
+                if openedEvaluation == nil {
+                    Button {
+                        save(result)
+                    } label: {
+                        Text("Save this check")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(t.sendFg)
+                            .padding(.vertical, 9)
+                            .padding(.horizontal, 18)
+                            .background(Capsule().fill(t.sendBg))
+                    }
+                    .buttonStyle(.plain)
 
-                Button("Discard") {
-                    runner.reset()
+                    Button("Discard") { runner.reset() }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 12.5, weight: .medium))
+                        .foregroundStyle(t.sub)
+                }
+                Button("Copy as Markdown") {
+                    let md = ArtifactExport.markdown(evaluation: result, framework: framework)
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(md, forType: .string)
                 }
                 .buttonStyle(.plain)
                 .font(.system(size: 12.5, weight: .medium))
-                .foregroundStyle(t.sub)
+                .foregroundStyle(t.accent)
+
+                Button("Save as PDF…") {
+                    ArtifactExport.savePDF(
+                        view: PrintableEvaluationView(evaluation: result, framework: framework),
+                        title: result.workLabel)
+                }
+                .buttonStyle(.plain)
+                .font(.system(size: 12.5, weight: .medium))
+                .foregroundStyle(t.accent)
                 Spacer()
             }
 
@@ -536,6 +559,7 @@ struct SkillCheckView: View {
     }
 
     private func startNewCheck() {
+        openedEvaluation = nil
         workText = ""
         workLabel = ""
         sourceName = nil
@@ -567,13 +591,13 @@ struct SkillCheckView: View {
     }
 
     private func setTeacherLevel(_ ordinal: Int) {
-        guard var result = runner.result, result.effectiveLevel != ordinal else { return }
+        guard var result = openedEvaluation ?? runner.result, result.effectiveLevel != ordinal else { return }
         result.teacherLevel = ordinal
         // Saved checks are updated in place; an unsaved one just re-renders.
         if let i = state.skillEvaluations.firstIndex(where: { $0.id == result.id }) {
             state.skillEvaluations[i] = result
         }
-        runner.applyTeacherLevel(ordinal)
+        if openedEvaluation != nil { openedEvaluation = result } else { runner.applyTeacherLevel(ordinal) }
     }
 
     /// Snapshot hook: TW_SKILLCHECK=run|result puts the screen into a state

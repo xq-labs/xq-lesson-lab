@@ -3,12 +3,16 @@ import Combine
 
 enum MainView: Hashable {
     case chat, rubrics, activities, pogs, quizzes, integrations, classroom
+    case learnerProfiles, communityGraph, matcher
 }
 
 @MainActor
 final class AppState: ObservableObject {
     @Published var view: MainView = .chat
     @Published var activeChat: String? = "c1"
+    /// Shared student selection for the Learner Profiles and Project Matcher
+    /// screens, so switching between them keeps the same student in view.
+    @Published var selectedCompetencyStudent: String = "Maya Rodriguez"
     @Published var themeName: String = "dark"
     @Published var settingsOpen = false
     /// First-run welcome tour overlay — reopenable from the header "?" button.
@@ -310,6 +314,9 @@ final class AppState: ObservableObject {
         case .quizzes: return "Quizzes"
         case .integrations: return "Plugins"
         case .classroom: return "My Classroom"
+        case .learnerProfiles: return "Learner Profiles"
+        case .communityGraph: return "Community Opportunity Graph"
+        case .matcher: return "Project & Mentor Matcher"
         }
     }
 

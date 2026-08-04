@@ -5,6 +5,7 @@ struct LibraryPage<Content: View>: View {
     @EnvironmentObject var state: AppState
     var title: String
     var subtitle: String
+    var maxWidth: CGFloat = 960
     @ViewBuilder var content: Content
 
     private var t: Theme { state.theme }
@@ -21,7 +22,7 @@ struct LibraryPage<Content: View>: View {
                     .padding(.bottom, 20)
                 content
             }
-            .frame(maxWidth: 960, alignment: .leading)
+            .frame(maxWidth: maxWidth, alignment: .leading)
             .padding(.vertical, 24)
             .padding(.horizontal, 32)
             .frame(maxWidth: .infinity)

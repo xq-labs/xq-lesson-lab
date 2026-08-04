@@ -1,5 +1,12 @@
 import Foundation
 
+extension String {
+    /// The first space-separated word — used for first-name-only greetings.
+    var firstWord: String {
+        split(separator: " ").first.map(String.init) ?? self
+    }
+}
+
 enum ArtifactType: String, Codable {
     case rubric, activity, pog, quiz, email
 
@@ -154,9 +161,7 @@ struct Classroom: Codable, Equatable {
     /// demo sample chats/artifacts alongside this (editable) demo classroom.
     var isDemo = true
 
-    var firstName: String {
-        teacherName.split(separator: " ").first.map(String.init) ?? teacherName
-    }
+    var firstName: String { teacherName.firstWord }
 
     /// Nothing typed in yet — the state right after "Start fresh". An empty
     /// class card still counts as blank, so adding one doesn't withdraw the

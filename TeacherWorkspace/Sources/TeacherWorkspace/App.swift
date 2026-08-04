@@ -10,7 +10,7 @@ struct LessonLabApp: App {
 
     init() {
         // Snapshot mode for automated UI verification:
-        // TW_SNAPSHOT=<out.png> [TW_THEME=light] [TW_SETTINGS=1] [TW_VIEW=rubrics|activities|pogs|integrations|welcome|onboarding] [TW_PREVIEW=rubric|activity|pog]
+        // TW_SNAPSHOT=<out.png> [TW_THEME=light] [TW_SETTINGS=1] [TW_VIEW=rubrics|activities|pogs|integrations|classroom|learnerProfiles|communityGraph|matcher|welcome|onboarding] [TW_PREVIEW=rubric|activity|pog]
         // The app launches normally, configures state, captures its own window
         // after the first frame, writes the PNG, and exits.
         let env = ProcessInfo.processInfo.environment
@@ -142,6 +142,9 @@ struct LessonLabApp: App {
             case "pogs": snapState.setView(.pogs)
             case "integrations": snapState.setView(.integrations)
             case "classroom": snapState.setView(.classroom)
+            case "learnerProfiles": snapState.setView(.learnerProfiles)
+            case "communityGraph": snapState.setView(.communityGraph)
+            case "matcher": snapState.setView(.matcher)
             case "welcome": snapState.newChat()
             case "onboarding": snapState.onboardingOpen = true
             default: break

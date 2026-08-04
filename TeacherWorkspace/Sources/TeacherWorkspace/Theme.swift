@@ -33,6 +33,11 @@ struct Theme {
     var red: Color
     var scrim: Color
     var isDark: Bool
+    /// Category colors for competency/partner/tag taxonomies (rings, node
+    /// graphs, chip kinds). Capped at 3 — validated as distinguishable in
+    /// both modes; a 4th slot fails the all-pairs check, so a 4th category
+    /// folds to a neutral color instead of a new hue.
+    var categorical: [Color]
 
     static let dark = Theme(
         bg: Color(hex: 0x212121),
@@ -54,7 +59,8 @@ struct Theme {
         green: Color(hex: 0x5BBA7D),
         red: Color(hex: 0xE0796C),
         scrim: Color(hex: 0x000000, alpha: 0.55),
-        isDark: true
+        isDark: true,
+        categorical: [Color(hex: 0x3987E5), Color(hex: 0xD95926), Color(hex: 0x199E70)]
     )
 
     static let light = Theme(
@@ -77,7 +83,8 @@ struct Theme {
         green: Color(hex: 0x4CA46A),
         red: Color(hex: 0xC0503E),
         scrim: Color(hex: 0x201E18, alpha: 0.35),
-        isDark: false
+        isDark: false,
+        categorical: [Color(hex: 0x2A78D6), Color(hex: 0xEB6834), Color(hex: 0x1BAF7A)]
     )
 }
 

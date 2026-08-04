@@ -25,6 +25,17 @@ struct LessonLabApp: App {
             exit(0)
         }
 
+        // Evaluation probe: TW_EVAL_FILE=<student work> TW_EVAL_SKILL=<skill id>
+        // [TW_EVAL_RUNS=n] places the work on that skill's progression n times
+        // and reports the spread. The spread is the point — a placement that
+        // moves between runs is not a judgment, and this is the check that
+        // says so before any of it reaches a teacher.
+        if let file = env["TW_EVAL_FILE"] {
+            runEvaluationProbe(file: file,
+                               skillId: env["TW_EVAL_SKILL"] ?? "",
+                               runs: Int(env["TW_EVAL_RUNS"] ?? "1") ?? 1)
+        }
+
         // Framework integrity check: TW_FRAMEWORK_CHECK=1 loads the bundled
         // competency CSVs, prints what it found, and exits non-zero if
         // anything is malformed, duplicated or orphaned. Run it before a
@@ -260,6 +271,86 @@ struct LessonLabApp: App {
             }
         }
     }
+
+    /// Runs the placement stages headlessly and never returns — the caller is
+    /// a probe branch that exits.
+    private func runEvaluationProbe(file: String, skillId: String, runs: Int) -> Never {
+        func fail(_ message: String) -> Never {
+            print("EVAL ERROR: \(message)")
+            fflush(stdout)
+            exit(1)
+        }
+
+        let url = URL(fileURLWithPath: file)
+        guard let raw = FileAttachment.extractText(from: url) else {
+            fail("no readable text in \(url.lastPathComponent)")
+        }
+        let work: WorkDocument
+        do {
+            work = try WorkDocument(text: raw, sourceName: url.lastPathComponent)
+        } catch {
+            fail(error.localizedDescription)
+        }
+
+        let framework: XQFramework
+        do {
+            (framework, _) = try FrameworkImport.load()
+        } catch {
+            fail(error.localizedDescription)
+        }
+        guard let skill = framework.skill(id: skillId) else {
+            fail("unknown skill id \(skillId.isEmpty ? "(none given — set TW_EVAL_SKILL)" : skillId)")
+        }
+
+        print("work: \(url.lastPathComponent) — \(work.sentences.count) sentences, \(work.text.count) chars")
+        print("skill: \(skill.id) — \(skill.competencyName) — \(skill.name)")
+        print("runs: \(runs)\n")
+        EvaluationPipeline.traceRawReplies =
+            ProcessInfo.processInfo.environment["TW_EVAL_VERBOSE"] != nil
+        fflush(stdout)
+
+        var levels: [Int] = []
+        let semaphore = DispatchSemaphore(value: 0)
+        Task.detached {
+            for run in 1...max(1, runs) {
+                let started = Date()
+                do {
+                    let placement = try await EvaluationPipeline.evaluate(
+                        work: work, skill: skill, backend: LlamaBackend.shared)
+                    levels.append(placement.level)
+                    let rungs = placement.verdicts
+                        .sorted { $0.ordinal < $1.ordinal }
+                        .map { v in
+                            let mark = v.meets.map { $0 ? "Y" : "N" } ?? "?"
+                            return "L\(v.ordinal):\(mark)@\(v.evidenceSentence.map(String.init) ?? "-")"
+                        }
+                        .joined(separator: " ")
+                    let elapsed = String(format: "%.1fs", Date().timeIntervalSince(started))
+                    print("run \(run): level \(placement.level) "
+                          + "[\(rungs)]\(placement.hasMixedEvidence ? " MIXED" : "")"
+                          + "\(placement.isRelevant ? "" : " NOT-RELEVANT") \(elapsed)")
+                    if let next = placement.nextStep { print("        next: \(next)") }
+                } catch {
+                    print("run \(run): FAILED — \(error.localizedDescription)")
+                }
+                fflush(stdout)
+            }
+            semaphore.signal()
+        }
+        semaphore.wait()
+
+        let distinct = Set(levels)
+        print("\nlevels: \(levels.map(String.init).joined(separator: ", "))")
+        if distinct.count <= 1 {
+            print("STABLE across \(levels.count) run(s)")
+        } else {
+            print("UNSTABLE — \(distinct.count) different levels across \(levels.count) runs")
+        }
+        fflush(stdout)
+        LlamaBackend.shared.shutdown()
+        exit(distinct.count <= 1 ? 0 : 1)
+    }
+
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {

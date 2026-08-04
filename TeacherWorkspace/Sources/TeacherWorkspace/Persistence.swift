@@ -38,7 +38,10 @@ enum PersistenceStore {
         if let override = env["TW_STORE"] {
             return URL(fileURLWithPath: override)
         }
-        if env["TW_SNAPSHOT"] != nil || env["TW_PROBE"] != nil || env["TW_PARSE_FILE"] != nil {
+        // Every headless probe belongs in this list — a probe that builds an
+        // AppState would otherwise autosave over the teacher's real store.
+        for probe in ["TW_SNAPSHOT", "TW_PROBE", "TW_PARSE_FILE", "TW_EVAL_FILE",
+                      "TW_EXTRACT_FILE", "TW_FRAMEWORK_CHECK"] where env[probe] != nil {
             return nil
         }
         guard let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first

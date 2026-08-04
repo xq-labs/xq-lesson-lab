@@ -73,7 +73,11 @@ different Mac means importing it there (`generate_keys -f file`).
    with your private key and emits `appcast.xml` (+ `.delta` files against
    the previous release, which is what keeps updates small).
 4. Copy the generated `appcast.xml` over `website/appcast.xml`, commit, and
-   let Vercel redeploy (auto on push).
+   let Vercel redeploy (auto on push). The "Version X · <date>" line inside the
+   landing page's download buttons reads that same file at page load, so
+   this step is the only thing that keeps it current — no separate edit. (The
+   values baked into `index.html` are just the no-JS fallback; refreshing them
+   is optional.)
 5. Publish: `gh release create v<version> release/v<version>/Lesson-Lab.dmg
    release/v<version>/*.zip release/v<version>/*.delta --title "v<version>"`.
 6. Sanity check: install the **previous** DMG, open it, and confirm

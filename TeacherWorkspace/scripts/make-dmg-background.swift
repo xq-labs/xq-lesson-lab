@@ -58,10 +58,14 @@ func render(scale: CGFloat) -> CGImage {
                            endCenter: CGPoint(x: W * 0.22, y: H * 0.8), endRadius: 300, options: [])
 
     // Soft landing pads behind the two icon slots (Finder centers the icons
-    // at x=165 and x=495, y=185 from the top → CG y = 215).
+    // at x=165 and x=495, y=185 from the top → CG y = 215). The pad is taller
+    // than it is wide so it also clears the icon's label: at icon size 110 the
+    // 13pt name sits around y=252 from the top, so the pad runs from y=112 to
+    // y=280 (CG y 120…288) and the text lands inside it instead of straddling
+    // the bottom edge.
     for x: CGFloat in [165, 495] {
-        let pad = CGRect(x: x - 72, y: 215 - 72, width: 144, height: 144)
-        let path = CGPath(roundedRect: pad, cornerWidth: 34, cornerHeight: 34, transform: nil)
+        let pad = CGRect(x: x - 76, y: 120, width: 152, height: 168)
+        let path = CGPath(roundedRect: pad, cornerWidth: 36, cornerHeight: 36, transform: nil)
         ctx.addPath(path)
         ctx.setFillColor(hex(0x1F1E1A, 0.04))
         ctx.fillPath()

@@ -156,10 +156,10 @@
     gap: 16px; margin-top: 36px; flex-wrap: wrap;
   }
   .download {
-    display: inline-flex; align-items: center; gap: 10px;
+    display: inline-flex; align-items: center; gap: 11px;
     background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 92%, #fff), var(--accent-deep));
     color: #fff; font-size: 16.5px; font-weight: 600; letter-spacing: .005em;
-    text-decoration: none; padding: 15px 30px; border-radius: 14px;
+    text-decoration: none; padding: 12px 28px; border-radius: 14px;
     box-shadow: 0 1px 0 rgba(255,255,255,.15) inset, 0 8px 20px -6px var(--ring);
     transition: transform .18s ease, box-shadow .18s ease;
   }
@@ -170,6 +170,14 @@
   .download:active { transform: translateY(0); }
   .download svg { width: 17px; height: 17px; }
   .meta { color: var(--faint); font-size: 13.5px; margin-top: 16px; letter-spacing: .01em; }
+  /* Version + release date, tucked under the button's own label. Baked into the
+     markup for no-JS/no-flash, then refreshed from appcast.xml so it can't
+     drift from what's actually live. */
+  .download .label { display: flex; flex-direction: column; line-height: 1.2; }
+  .download .release {
+    font-size: 11px; font-weight: 500; letter-spacing: .015em;
+    opacity: .8; margin-top: 2px;
+  }
 
   /* ---------- app window ---------- */
   .window-stage { position: relative; margin-top: 72px; }
@@ -298,7 +306,10 @@
     <div class="cta-row">
       <a class="download" href="https://github.com/xq-labs/xq-lesson-lab/releases/latest/download/Lesson-Lab.dmg">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Download for Mac
+        <span class="label">Download for Mac
+          <span class="release">Version <span data-release-version>1.0</span> ·
+            <time data-release-date datetime="2026-07-31">July 31, 2026</time></span>
+        </span>
       </a>
     </div>
     <p class="meta">Free · macOS 14 or later · Apple Silicon recommended</p>
@@ -358,7 +369,10 @@
     <div class="cta-row">
       <a class="download" href="https://github.com/xq-labs/xq-lesson-lab/releases/latest/download/Lesson-Lab.dmg">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Download for Mac
+        <span class="label">Download for Mac
+          <span class="release">Version <span data-release-version>1.0</span> ·
+            <time data-release-date datetime="2026-07-31">July 31, 2026</time></span>
+        </span>
       </a>
     </div>
     <p class="meta">Free · macOS 14 or later · Apple Silicon recommended</p>
@@ -388,6 +402,60 @@
       try { localStorage.setItem('ll-theme', next); } catch (e) {}
       syncShot();
     });
+  })();
+
+  // Version + release date come from the Sparkle feed the app itself polls, so
+  // shipping a release updates the page with no extra step. The markup already
+  // carries the current values; a failed or malformed fetch just leaves them.
+  (function () {
+    var SPARKLE = 'http://www.andymatuschak.org/xml-namespaces/sparkle';
+    var MONTHS = { Jan: 'January', Feb: 'February', Mar: 'March', Apr: 'April',
+                   May: 'May', Jun: 'June', Jul: 'July', Aug: 'August',
+                   Sep: 'September', Oct: 'October', Nov: 'November', Dec: 'December' };
+
+    function text(item, tag) {
+      var el = item.getElementsByTagNameNS(SPARKLE, tag)[0] ||
+               item.getElementsByTagName(tag)[0];
+      return el ? el.textContent.trim() : '';
+    }
+
+    fetch('/appcast.xml', { cache: 'no-cache' })
+      .then(function (r) { return r.ok ? r.text() : Promise.reject(r.status); })
+      .then(function (xml) {
+        var doc = new DOMParser().parseFromString(xml, 'application/xml');
+        var latest = null;
+        Array.prototype.forEach.call(doc.getElementsByTagName('item'), function (item) {
+          var build = parseInt(text(item, 'version'), 10);
+          if (!isNaN(build) && (!latest || build > latest.build)) {
+            latest = { build: build, item: item };
+          }
+        });
+        if (!latest) return;
+
+        var version = text(latest.item, 'shortVersionString');
+        if (version) {
+          Array.prototype.forEach.call(
+            document.querySelectorAll('[data-release-version]'),
+            function (el) { el.textContent = version; });
+        }
+
+        // Read the RFC-822 day/month/year straight off the string rather than
+        // through Date — a viewer several zones away must not see the release
+        // land on a different calendar day than the feed says.
+        var pub = (text(latest.item, 'pubDate') || '').match(/(\d{1,2}) (\w{3}) (\d{4})/);
+        if (pub && MONTHS[pub[2]]) {
+          var day = parseInt(pub[1], 10);
+          Array.prototype.forEach.call(
+            document.querySelectorAll('[data-release-date]'),
+            function (el) {
+              el.textContent = MONTHS[pub[2]] + ' ' + day + ', ' + pub[3];
+              el.setAttribute('datetime', pub[3] + '-' +
+                ('0' + (Object.keys(MONTHS).indexOf(pub[2]) + 1)).slice(-2) + '-' +
+                ('0' + day).slice(-2));
+            });
+        }
+      })
+      .catch(function () { /* keep the baked-in values */ });
   })();
 </script>
 

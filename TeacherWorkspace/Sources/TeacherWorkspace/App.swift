@@ -25,6 +25,20 @@ struct LessonLabApp: App {
             exit(0)
         }
 
+        // Attachment extraction test: TW_EXTRACT_FILE=<path> prints the text
+        // FileAttachment pulls out of a file, or reports that it found none.
+        // Exits non-zero on nil so a script can assert a format is readable.
+        if let file = env["TW_EXTRACT_FILE"] {
+            let url = URL(fileURLWithPath: file)
+            guard let text = FileAttachment.extractText(from: url) else {
+                print("EXTRACT: no readable text in \(url.lastPathComponent)")
+                exit(1)
+            }
+            print("EXTRACT \(url.lastPathComponent) — \(text.count) chars")
+            print(text)
+            exit(0)
+        }
+
         // Roster parser test: TW_ROSTER_FILE=<path> prints parsed students.
         if let file = env["TW_ROSTER_FILE"], let raw = try? String(contentsOfFile: file, encoding: .utf8) {
             for s in RosterImport.parse(raw) {

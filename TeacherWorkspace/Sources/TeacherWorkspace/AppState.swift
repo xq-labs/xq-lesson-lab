@@ -80,6 +80,9 @@ final class AppState: ObservableObject {
     @Published var classroomBackup: Classroom?
     /// Files/artifacts queued in the composer for the next message.
     @Published var pendingAttachments: [PendingAttachment] = []
+    /// Set when a file had no readable text; shown above the composer until
+    /// the next successful attach. Transient — never persisted.
+    @Published var attachmentNotice: String?
     /// Teacher-made sidebar folders, in display order.
     @Published var folders: [Folder] = []
     /// chat id → folder id. Chats with no entry live in All chats only.
@@ -585,7 +588,14 @@ final class AppState: ObservableObject {
     }
 
     func attachFile(at url: URL) {
-        guard let attachment = FileAttachment.attachment(from: url) else { return }
+        guard let attachment = FileAttachment.attachment(from: url) else {
+            // Silently dropping the file taught teachers that attaching a scan
+            // "just doesn't work" — say what happened and what to do instead.
+            attachmentNotice = "Couldn't read any text from \(url.lastPathComponent). "
+                + "If it's a scan or a photo, paste the text instead."
+            return
+        }
+        attachmentNotice = nil
         pendingAttachments.append(attachment)
     }
 

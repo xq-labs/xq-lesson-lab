@@ -15,22 +15,35 @@ enum FileAttachment {
     static let maxCharacters = 6000
 
     static let allowedTypes: [UTType] = [
-        .pdf, .plainText, .utf8PlainText, .text, .commaSeparatedText,
-        .tabSeparatedText, .rtf, UTType("net.daringfireball.markdown") ?? .plainText,
+        .pdf, .plainText, .utf8PlainText, .text, .commaSeparatedText, .tabSeparatedText, .rtf,
+    ] + [
+        "net.daringfireball.markdown",
+        "org.openxmlformats.wordprocessingml.document",  // .docx
+        "com.microsoft.word.doc",                        // .doc
+        "org.oasis-open.opendocument.text",              // .odt
+    ].compactMap(UTType.init)
+
+    /// Word processor formats AppKit reads on its own — it understands the
+    /// containers, so there's no ZIP handling here.
+    private static let attributedTypes: [String: NSAttributedString.DocumentType] = [
+        "rtf": .rtf, "rtfd": .rtf,
+        "docx": .officeOpenXML, "doc": .docFormat, "odt": .openDocument,
     ]
 
     /// Extracts readable text from a file. Returns nil when the format has
-    /// no extractable text.
+    /// no extractable text — a scan with no text layer reaches here as an
+    /// empty string, so callers must treat nil as "tell the teacher", not
+    /// "nothing happened".
     static func extractText(from url: URL) -> String? {
         let ext = url.pathExtension.lowercased()
         var raw: String?
         if ext == "pdf" {
             raw = PDFDocument(url: url)?.string
-        } else if ext == "rtf" || ext == "rtfd" {
+        } else if let documentType = attributedTypes[ext] {
             if let data = try? Data(contentsOf: url),
                let attributed = try? NSAttributedString(
                 data: data,
-                options: [.documentType: NSAttributedString.DocumentType.rtf],
+                options: [.documentType: documentType],
                 documentAttributes: nil) {
                 raw = attributed.string
             }

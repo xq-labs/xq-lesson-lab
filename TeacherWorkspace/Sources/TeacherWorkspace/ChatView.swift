@@ -261,6 +261,9 @@ struct ChatView: View {
                 mentionPicker
             }
             VStack(spacing: 8) {
+                if let notice = state.attachmentNotice {
+                    unreadableFileNotice(notice)
+                }
                 if !state.pendingAttachments.isEmpty {
                     attachmentChips
                 }
@@ -479,6 +482,33 @@ struct ChatView: View {
         for url in panel.urls {
             state.attachFile(at: url)
         }
+    }
+
+    /// Sits where the attachment chip would have gone, so the file the teacher
+    /// picked accounts for itself either way.
+    private func unreadableFileNotice(_ text: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 10, weight: .semibold))
+            Text(text)
+                .font(.system(size: 11.5, weight: .medium))
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+            Button {
+                state.attachmentNotice = nil
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 8, weight: .bold))
+                    .frame(width: 18, height: 18)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+        .foregroundStyle(t.red)
+        .padding(.vertical, 5)
+        .padding(.horizontal, 9)
+        .background(RoundedRectangle(cornerRadius: 8, style: .continuous)
+            .fill(t.red.opacity(t.isDark ? 0.16 : 0.10)))
     }
 
     private var attachmentChips: some View {

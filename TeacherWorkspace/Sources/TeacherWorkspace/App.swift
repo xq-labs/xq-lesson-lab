@@ -25,6 +25,28 @@ struct LessonLabApp: App {
             exit(0)
         }
 
+        // Store compatibility check: TW_STORE_CHECK=1 (with TW_STORE=<path>)
+        // loads a store and prints what survived. Adding a non-optional field
+        // to PersistedState makes the whole document fail to decode and takes
+        // a teacher's chats and classroom with it, so every release that
+        // touches that struct should run this against an older store.
+        if env["TW_STORE_CHECK"] != nil {
+            guard let saved = PersistenceStore.load() else {
+                print("STORE: nothing decoded — a teacher on this build would lose everything")
+                exit(1)
+            }
+            print("chats: \(saved.extraChats.count)")
+            print("messages: \(saved.extraMessages.values.reduce(0) { $0 + $1.count })")
+            print("rubrics: \(saved.userRubrics.count), activities: \(saved.userActivities.count), "
+                  + "pogs: \(saved.userPogs.count), quizzes: \(saved.userQuizzes.count)")
+            print("folders: \(saved.folders?.count ?? 0), archived: \(saved.archivedChats?.count ?? 0)")
+            print("classroom: \(saved.classroom.teacherName.isEmpty ? "(unnamed)" : saved.classroom.teacherName) "
+                  + "— \(saved.classroom.classes.count) classes, "
+                  + "\(saved.classroom.classes.reduce(0) { $0 + $1.students.count }) students")
+            print("skill checks: \(saved.skillEvaluations?.count ?? 0)")
+            exit(0)
+        }
+
         // Evaluation probe: TW_EVAL_FILE=<student work> TW_EVAL_SKILL=<skill id>
         // [TW_EVAL_RUNS=n] places the work on that skill's progression n times
         // and reports the spread. The spread is the point — a placement that
@@ -202,6 +224,7 @@ struct LessonLabApp: App {
             case "pogs": snapState.setView(.pogs)
             case "integrations": snapState.setView(.integrations)
             case "classroom": snapState.setView(.classroom)
+            case "skillcheck": snapState.setView(.skillCheck)
             case "welcome": snapState.newChat()
             case "onboarding": snapState.onboardingOpen = true
             default: break

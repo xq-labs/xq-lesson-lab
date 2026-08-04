@@ -34,7 +34,7 @@ enum FileAttachment {
     /// no extractable text — a scan with no text layer reaches here as an
     /// empty string, so callers must treat nil as "tell the teacher", not
     /// "nothing happened".
-    static func extractText(from url: URL) -> String? {
+    static func extractText(from url: URL, limit: Int = maxCharacters) -> String? {
         let ext = url.pathExtension.lowercased()
         var raw: String?
         if ext == "pdf" {
@@ -53,8 +53,8 @@ enum FileAttachment {
         }
         guard var text = raw?.trimmingCharacters(in: .whitespacesAndNewlines),
               !text.isEmpty else { return nil }
-        if text.count > maxCharacters {
-            text = String(text.prefix(maxCharacters)) + "\n…[truncated for length]"
+        if text.count > limit {
+            text = String(text.prefix(limit)) + "\n…[truncated for length]"
         }
         return text
     }

@@ -26,6 +26,14 @@ struct PersistedState: Codable {
     var sidebarWidth: Double?
     /// True once the welcome tour has been seen (or skipped).
     var hasSeenOnboarding: Bool?
+    /// Saved Skill Check results, and the component skills used most recently.
+    /// Optional like everything else added after v1 — `load()` swallows any
+    /// decode error and returns nil, and a synthesized decoder throws on a
+    /// missing key even when the property has a default, so a non-optional
+    /// field here would wipe every existing teacher's chats and classroom on
+    /// the first launch of the new build.
+    var skillEvaluations: [SkillEvaluation]?
+    var recentSkillIds: [String]?
 }
 
 /// JSON store at ~/Library/Application Support/LessonLab/store.json.

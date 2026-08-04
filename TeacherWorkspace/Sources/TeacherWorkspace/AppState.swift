@@ -2,7 +2,7 @@ import SwiftUI
 import Combine
 
 enum MainView: Hashable {
-    case chat, rubrics, activities, pogs, quizzes, integrations, classroom
+    case chat, rubrics, activities, pogs, quizzes, skillCheck, integrations, classroom
 }
 
 @MainActor
@@ -69,6 +69,12 @@ final class AppState: ObservableObject {
     @Published var userPogs: [Pog] = []
     @Published var userQuizzes: [Quiz] = []
     @Published var userEmails: [EmailDraft] = []
+    /// Saved Skill Check results, newest first.
+    @Published var skillEvaluations: [SkillEvaluation] = []
+    /// Component skills placed against recently, most recent first — the
+    /// picker floats these so a teacher working through one class set
+    /// isn't searching 115 skills every time.
+    @Published var recentSkillIds: [String] = []
     /// The teacher's real setup — drives the system prompt and sidebar.
     @Published var classroom: Classroom = .demo
     /// Per-chat "Class context" pill selection (class or student name).
@@ -83,6 +89,10 @@ final class AppState: ObservableObject {
     /// Set when a file had no readable text; shown above the composer until
     /// the next successful attach. Transient — never persisted.
     @Published var attachmentNotice: String?
+    /// True while a Skill Check placement is running. The model serves one
+    /// request at a time, so a chat message sent now would queue behind the
+    /// whole pipeline and read as a hang — both sides check this.
+    @Published var isEvaluating = false
     /// Teacher-made sidebar folders, in display order.
     @Published var folders: [Folder] = []
     /// chat id → folder id. Chats with no entry live in All chats only.
@@ -127,6 +137,8 @@ final class AppState: ObservableObject {
             if let w = saved.previewWidth { previewWidth = CGFloat(w) }
             if let w = saved.sidebarWidth { sidebarWidth = CGFloat(w) }
             hasSeenOnboarding = saved.hasSeenOnboarding ?? false
+            skillEvaluations = saved.skillEvaluations ?? []
+            recentSkillIds = saved.recentSkillIds ?? []
             // Demo default chat only makes sense while the demo data shows.
             if !classroom.isDemo, activeChat == "c1" { activeChat = nil }
         }
@@ -172,7 +184,9 @@ final class AppState: ObservableObject {
             chatFolder: chatFolder,
             archivedChats: Array(archivedChats).sorted(),
             sidebarWidth: Double(sidebarWidth),
-            hasSeenOnboarding: hasSeenOnboarding))
+            hasSeenOnboarding: hasSeenOnboarding,
+            skillEvaluations: skillEvaluations,
+            recentSkillIds: recentSkillIds))
     }
 
     // MARK: - Folders
@@ -318,6 +332,7 @@ final class AppState: ObservableObject {
         case .activities: return "Activities"
         case .pogs: return "Portraits of a Graduate"
         case .quizzes: return "Quizzes"
+        case .skillCheck: return "Skill Check"
         case .integrations: return "Plugins"
         case .classroom: return "My Classroom"
         }
@@ -702,7 +717,7 @@ final class AppState: ObservableObject {
 
     func send() {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty || !pendingAttachments.isEmpty, !isStreaming else { return }
+        guard !text.isEmpty || !pendingAttachments.isEmpty, !isStreaming, !isEvaluating else { return }
         var chatId = activeChat
         if chatId == nil {
             let id = "new-\(UUID().uuidString)"

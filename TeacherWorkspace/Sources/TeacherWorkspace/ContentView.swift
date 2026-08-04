@@ -187,6 +187,7 @@ struct ContentView: View {
         case .activities: ActivitiesView()
         case .pogs: PogsView()
         case .quizzes: QuizzesView()
+        case .skillCheck: SkillCheckView()
         case .integrations: IntegrationsView()
         case .classroom: ClassroomView()
         }

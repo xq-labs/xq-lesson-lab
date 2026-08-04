@@ -103,6 +103,7 @@ struct SidebarView: View {
             navButton("Activities", icon: "triangle", isActive: state.view == .activities) { state.setView(.activities) }
             navButton("Portraits of a Graduate", icon: "person", isActive: state.view == .pogs) { state.setView(.pogs) }
             navButton("Quizzes", icon: "checklist", isActive: state.view == .quizzes) { state.setView(.quizzes) }
+            navButton("Skill Check", icon: "checkmark.seal", isActive: state.view == .skillCheck) { state.setView(.skillCheck) }
             navButton("Plugins", icon: "circle.circle", isActive: state.view == .integrations) { state.setView(.integrations) }
         }
     }

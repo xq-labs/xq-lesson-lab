@@ -15,7 +15,8 @@ final class LlamaBackend: ChatBackend, @unchecked Sendable {
     private var vocab: OpaquePointer?
 
     private let contextTokens: Int32 = 8192
-    private let maxReplyTokens = 1200
+    // Reply length is per-call now — see GenerationOptions.maxTokens, which
+    // still defaults to 1200 for chat.
     private let batchSize: Int32 = 1024
 
     private init() {}
@@ -112,7 +113,7 @@ final class LlamaBackend: ChatBackend, @unchecked Sendable {
     /// to hand-built ChatML (Qwen's native format). The empty `<think>` block
     /// pre-fills Qwen's reasoning span so replies start immediately instead of
     /// spending the token budget thinking.
-    private func renderPrompt(turns: [ChatTurn]) -> String {
+    private func renderPrompt(turns: [ChatTurn], options: GenerationOptions) -> String {
         var rendered: String
         if let model, let templated = applyModelTemplate(model: model, turns: turns) {
             rendered = templated
@@ -125,6 +126,9 @@ final class LlamaBackend: ChatBackend, @unchecked Sendable {
         }
         if !rendered.hasSuffix("</think>\n\n") {
             rendered += "<think>\n\n</think>\n\n"
+        }
+        if let prefix = options.assistantPrefix, !prefix.isEmpty {
+            rendered += prefix
         }
         return rendered
     }
@@ -155,13 +159,13 @@ final class LlamaBackend: ChatBackend, @unchecked Sendable {
 
     // MARK: - Generation
 
-    func streamReply(turns: [ChatTurn]) -> AsyncThrowingStream<String, Error> {
+    func streamReply(turns: [ChatTurn], options: GenerationOptions) -> AsyncThrowingStream<String, Error> {
         let cancelled = CancellationFlag()
         return AsyncThrowingStream { continuation in
             continuation.onTermination = { _ in cancelled.set() }
             queue.async { [self] in
                 do {
-                    try generate(turns: turns, cancelled: cancelled) { piece in
+                    try generate(turns: turns, options: options, cancelled: cancelled) { piece in
                         continuation.yield(piece)
                     }
                     continuation.finish()
@@ -172,12 +176,32 @@ final class LlamaBackend: ChatBackend, @unchecked Sendable {
         }
     }
 
+    /// Token count for `text` under the loaded model's vocabulary. Stages that
+    /// budget their own prompts need this: the overflow rule below keeps the
+    /// *tail*, so a prompt that's too long loses its system turn silently.
+    func countTokens(_ text: String) throws -> Int {
+        var count = 0
+        var failure: Error?
+        queue.sync { [self] in
+            do {
+                try ensureLoaded()
+                guard let vocab else { throw ChatBackendError.contextCreationFailed }
+                count = try tokenize(text, vocab: vocab).count
+            } catch {
+                failure = error
+            }
+        }
+        if let failure { throw failure }
+        return count
+    }
+
     /// Must be called on `queue`.
-    private func generate(turns: [ChatTurn], cancelled: CancellationFlag, emit: (String) -> Void) throws {
+    private func generate(turns: [ChatTurn], options: GenerationOptions,
+                          cancelled: CancellationFlag, emit: (String) -> Void) throws {
         try ensureLoaded()
         guard let ctx, let vocab else { throw ChatBackendError.contextCreationFailed }
 
-        let prompt = renderPrompt(turns: turns)
+        let prompt = renderPrompt(turns: turns, options: options)
         var tokens = try tokenize(prompt, vocab: vocab)
 
         // Fresh conversation state per request (history travels in the prompt).
@@ -185,7 +209,7 @@ final class LlamaBackend: ChatBackend, @unchecked Sendable {
 
         // If the prompt overflows the context, keep the tail (history is
         // oldest-first, so the recent turns survive).
-        let budget = Int(contextTokens) - maxReplyTokens - 16
+        let budget = Int(contextTokens) - options.maxTokens - 16
         if tokens.count > budget {
             tokens = Array(tokens.suffix(budget))
         }
@@ -199,14 +223,22 @@ final class LlamaBackend: ChatBackend, @unchecked Sendable {
             offset += chunk.count
         }
 
-        let sampler = makeSampler()
+        let sampler = makeSampler(options)
         defer { llama_sampler_free(sampler) }
 
         var utf8Buffer = Data()
         let filter = ThinkTagFilter()
         var pieceBuf = [CChar](repeating: 0, count: 512)
 
-        for _ in 0..<maxReplyTokens {
+        // With a stop rule in play the reply can't go out token by token — the
+        // trim happens at the end, and text already emitted can't be recalled.
+        // Those modes are read through `complete()` anyway, which concatenates.
+        let trimming = !options.stop.isEmpty || options.stopOnBalancedJSON
+        var produced = options.assistantPrefix ?? ""
+        if !trimming, !produced.isEmpty { emit(produced) }
+
+        var hitStop = false
+        for _ in 0..<options.maxTokens {
             if cancelled.isSet { break }
             let token = llama_sampler_sample(sampler, ctx, -1)
             if llama_vocab_is_eog(vocab, token) { break }
@@ -218,7 +250,13 @@ final class LlamaBackend: ChatBackend, @unchecked Sendable {
                 }
                 if let valid = Self.extractValidUTF8Prefix(from: &utf8Buffer) {
                     if let visible = filter.push(valid), !visible.isEmpty {
-                        emit(visible)
+                        produced += visible
+                        if !trimming { emit(visible) }
+                        if let cut = Self.stopIndex(in: produced, options: options) {
+                            produced = String(produced.prefix(cut))
+                            hitStop = true
+                            break
+                        }
                     }
                 }
             }
@@ -228,9 +266,56 @@ final class LlamaBackend: ChatBackend, @unchecked Sendable {
 
         // Flush whatever the filter is still holding (e.g. text that looked
         // like the start of a tag but wasn't).
-        if let rest = filter.flush(), !rest.isEmpty {
-            emit(rest)
+        if !hitStop, let rest = filter.flush(), !rest.isEmpty {
+            produced += rest
+            if !trimming { emit(rest) }
         }
+        if trimming {
+            if let cut = Self.stopIndex(in: produced, options: options) {
+                produced = String(produced.prefix(cut))
+            }
+            emit(produced)
+        }
+    }
+
+    /// How much of `text` to keep, or nil to keep generating. Explicit stop
+    /// strings win over the balanced-JSON rule when both would fire.
+    static func stopIndex(in text: String, options: GenerationOptions) -> Int? {
+        var cut: Int?
+        for stop in options.stop where !stop.isEmpty {
+            if let found = text.range(of: stop) {
+                let n = text.distance(from: text.startIndex, to: found.lowerBound)
+                cut = min(cut ?? n, n)
+            }
+        }
+        if options.stopOnBalancedJSON, let n = balancedJSONEnd(text) {
+            cut = min(cut ?? n, n)
+        }
+        return cut
+    }
+
+    /// Character count through the first complete `{…}` or `[…]`, counting
+    /// only braces outside string literals so punctuation in a descriptor
+    /// can't close the object early.
+    static func balancedJSONEnd(_ text: String) -> Int? {
+        var depth = 0
+        var inString = false
+        var escaped = false
+        var opened = false
+        for (i, ch) in text.enumerated() {
+            if escaped { escaped = false; continue }
+            if inString, ch == "\\" { escaped = true; continue }
+            if ch == "\"" { inString.toggle(); continue }
+            if inString { continue }
+            if ch == "{" || ch == "[" {
+                depth += 1
+                opened = true
+            } else if ch == "}" || ch == "]" {
+                depth -= 1
+                if opened, depth <= 0 { return i + 1 }
+            }
+        }
+        return nil
     }
 
     private func tokenize(_ text: String, vocab: OpaquePointer) throws -> [llama_token] {
@@ -252,13 +337,19 @@ final class LlamaBackend: ChatBackend, @unchecked Sendable {
         guard status == 0 else { throw ChatBackendError.decodeFailed }
     }
 
-    private func makeSampler() -> UnsafeMutablePointer<llama_sampler> {
-        // Qwen3-recommended sampling for non-thinking chat.
+    private func makeSampler(_ options: GenerationOptions) -> UnsafeMutablePointer<llama_sampler> {
         let chain = llama_sampler_chain_init(llama_sampler_chain_default_params())!
-        llama_sampler_chain_add(chain, llama_sampler_init_top_k(20))
-        llama_sampler_chain_add(chain, llama_sampler_init_top_p(0.8, 1))
-        llama_sampler_chain_add(chain, llama_sampler_init_temp(0.7))
-        llama_sampler_chain_add(chain, llama_sampler_init_dist(UInt32.random(in: 0..<UInt32.max)))
+        // Temperature 0 means "the same answer every time", which sampling
+        // can't promise however low you set it — take the argmax instead.
+        guard options.temperature > 0 else {
+            llama_sampler_chain_add(chain, llama_sampler_init_greedy())
+            return chain
+        }
+        // Qwen3-recommended sampling for non-thinking chat.
+        llama_sampler_chain_add(chain, llama_sampler_init_top_k(options.topK))
+        llama_sampler_chain_add(chain, llama_sampler_init_top_p(options.topP, 1))
+        llama_sampler_chain_add(chain, llama_sampler_init_temp(options.temperature))
+        llama_sampler_chain_add(chain, llama_sampler_init_dist(options.seed ?? UInt32.random(in: 0..<UInt32.max)))
         return chain
     }
 

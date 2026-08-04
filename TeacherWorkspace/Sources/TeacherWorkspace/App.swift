@@ -133,7 +133,10 @@ struct LessonLabApp: App {
                 do {
                     for try await piece in LlamaBackend.shared.streamReply(turns: turns) {
                         print(piece, terminator: "")
-                        FileHandle.standardOutput.synchronizeFile()
+                        // synchronizeFile() throws an ObjC exception — and so
+                        // kills the process — whenever stdout is a pipe rather
+                        // than a tty, which is every scripted run.
+                        fflush(stdout)
                     }
                     print("")
                 } catch {

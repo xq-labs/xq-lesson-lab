@@ -130,54 +130,6 @@ enum ArtifactParser {
         return (cleaned, true)
     }
 
-    /// Small models routinely emit slightly-broken JSON: truncated closers
-    /// (`…"]}` missing a `}`) or surplus ones (`…}]}}`). Parse as-is first; on
-    /// failure, walk the text string-aware and either cut at the point where
-    /// the top-level object closes (drops trailing garbage) or append the
-    /// missing closers (repairs truncation).
-    private static func parseRepairingTruncation(_ text: String) -> [String: Any]? {
-        func parse(_ s: String) -> [String: Any]? {
-            try? JSONSerialization.jsonObject(with: Data(s.utf8)) as? [String: Any]
-        }
-        if let obj = parse(text) { return obj }
-
-        var stack: [Character] = []
-        var inString = false
-        var escaped = false
-        for (offset, ch) in text.enumerated() {
-            if escaped { escaped = false; continue }
-            if inString {
-                if ch == "\\" { escaped = true }
-                else if ch == "\"" { inString = false }
-                continue
-            }
-            switch ch {
-            case "\"": inString = true
-            case "{": stack.append("}")
-            case "[": stack.append("]")
-            case "}", "]":
-                if stack.last == ch {
-                    stack.removeLast()
-                    if stack.isEmpty {
-                        // Top-level value complete — ignore anything after it.
-                        let end = text.index(text.startIndex, offsetBy: offset)
-                        return parse(String(text[...end]))
-                    }
-                }
-            default: break
-            }
-        }
-
-        // Never closed — repair the truncation.
-        var repaired = text
-        if inString { repaired += "\"" }
-        while let last = repaired.last, last == "," || last == "\n" || last == " " {
-            repaired.removeLast()
-        }
-        repaired += String(stack.reversed())
-        return parse(repaired)
-    }
-
     /// For artifact-tagged blocks with an unrecognized type: pull out any
     /// human-readable text so the reply isn't silently swallowed.
     private static func salvageText(_ body: String) -> String? {
@@ -186,7 +138,7 @@ enum ArtifactParser {
             jsonText = String(jsonText[jsonText.index(after: newline)...])
         }
         guard let start = jsonText.firstIndex(of: "{"),
-              let obj = parseRepairingTruncation(String(jsonText[start...])) else { return nil }
+              let obj = JSONRepair.object(from: String(jsonText[start...])) else { return nil }
         for key in ["text", "content", "message", "description"] {
             if let s = obj[key] as? String, !s.isEmpty { return s }
         }
@@ -211,7 +163,7 @@ enum ArtifactParser {
         }
         guard let start = jsonText.firstIndex(of: "{") else { return nil }
         let candidate = String(jsonText[start...]).trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let obj = parseRepairingTruncation(candidate),
+        guard let obj = JSONRepair.object(from: candidate),
               let type = obj["type"] as? String else { return nil }
 
         let id = "\(idPrefix)-\(index)"

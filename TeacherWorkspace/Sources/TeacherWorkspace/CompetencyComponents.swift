@@ -121,6 +121,40 @@ struct LegendDot: View {
     }
 }
 
+/// Shown in place of the Learner Profiles / Community Graph / Project
+/// Matcher screens once the teacher edits their classroom — this sample
+/// data is keyed to `Classroom.demo`'s roster and unit, so it steps aside
+/// the same way the sample rubrics/activities/PoGs do.
+struct CompetencyDemoGate: View {
+    @EnvironmentObject var state: AppState
+    private var t: Theme { state.theme }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("This is demo data, tied to the sample classroom.")
+                .font(.system(size: 13.5, weight: .semibold))
+                .foregroundStyle(t.text)
+            Text("Restore the sample classroom to explore this screen — your current classroom stays saved and you can switch back anytime.")
+                .font(.system(size: 13))
+                .foregroundStyle(t.sub)
+                .fixedSize(horizontal: false, vertical: true)
+            Button {
+                state.restoreDemoClassroom(returnToChat: false)
+            } label: {
+                Text("Restore demo data")
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .foregroundStyle(t.accent)
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 2)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(t.card))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(t.border))
+    }
+}
+
 extension MatchTagKind {
     /// Maps each tag's meaning onto the theme's 3-slot categorical palette —
     /// consistent order reused across the Matcher and Community screens.

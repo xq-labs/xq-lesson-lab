@@ -12,8 +12,10 @@ struct MatcherView: View {
                     subtitle: "Ranks real opportunities against what a student's portfolio is missing.",
                     maxWidth: 1040) {
             VStack(alignment: .leading, spacing: 16) {
-                StudentPicker(students: SampleData.competencyStudents, selected: $state.selectedCompetencyStudent)
-                if let profile = SampleData.matcherProfiles[state.selectedCompetencyStudent] {
+                if !state.classroom.isDemo {
+                    CompetencyDemoGate()
+                } else if let profile = SampleData.matcherProfiles[state.selectedCompetencyStudent] {
+                    StudentPicker(students: SampleData.competencyStudents, selected: $state.selectedCompetencyStudent)
                     header(profile)
                     matchingForTile(profile)
                     VStack(spacing: 12) {

@@ -12,8 +12,10 @@ struct LearnerProfileView: View {
                     subtitle: "A live competency record for each student, assembled from real classwork — not a fixed trait, a running picture.",
                     maxWidth: 1040) {
             VStack(alignment: .leading, spacing: 16) {
-                StudentPicker(students: SampleData.competencyStudents, selected: $state.selectedCompetencyStudent)
-                if let profile = SampleData.learnerProfiles[state.selectedCompetencyStudent] {
+                if !state.classroom.isDemo {
+                    CompetencyDemoGate()
+                } else if let profile = SampleData.learnerProfiles[state.selectedCompetencyStudent] {
+                    StudentPicker(students: SampleData.competencyStudents, selected: $state.selectedCompetencyStudent)
                     header(profile)
                     HStack(alignment: .top, spacing: 14) {
                         CompetencyTile(title: "Competency growth") {

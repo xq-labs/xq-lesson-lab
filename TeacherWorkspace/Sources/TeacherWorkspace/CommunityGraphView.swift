@@ -13,16 +13,20 @@ struct CommunityGraphView: View {
                     subtitle: "The organizations around a unit, scored for fit and capacity.",
                     maxWidth: 1040) {
             VStack(alignment: .leading, spacing: 16) {
-                header
-                filterRow
-                CompetencyTile(title: "Partnership network") { networkSection }
-                SectionLabel(text: "RECOMMENDED FOR THIS UNIT")
-                VStack(spacing: 11) {
-                    ForEach(Array(data.recommended.enumerated()), id: \.element.id) { idx, org in
-                        partnerCard(org, emphasized: idx == 0)
+                if !state.classroom.isDemo {
+                    CompetencyDemoGate()
+                } else {
+                    header
+                    filterRow
+                    CompetencyTile(title: "Partnership network") { networkSection }
+                    SectionLabel(text: "RECOMMENDED FOR THIS UNIT")
+                    VStack(spacing: 11) {
+                        ForEach(Array(data.recommended.enumerated()), id: \.element.id) { idx, org in
+                            partnerCard(org, emphasized: idx == 0)
+                        }
                     }
+                    statRow
                 }
-                statRow
             }
         }
     }

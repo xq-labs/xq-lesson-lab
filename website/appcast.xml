@@ -3,6 +3,19 @@
     <channel>
         <title>XQ Lesson Lab</title>
         <item>
+            <title>1.0.2</title>
+            <pubDate>Tue, 04 Aug 2026 13:31:46 -0300</pubDate>
+            <sparkle:version>3</sparkle:version>
+            <sparkle:shortVersionString>1.0.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <enclosure url="https://github.com/xq-labs/xq-lesson-lab/releases/download/v1.0.2/Lesson-Lab-1.0.2.zip" length="5733797" type="application/octet-stream" sparkle:edSignature="kGqyeMa1pHiwLnH7CAmvk1KqjZ9fz4O35CJZBL1RUXsVCm7x1jwUihtLD+nlWpSX0aW1xI+OGYBz9klq5YmlDw=="/>
+            <sparkle:deltas>
+                <enclosure url="https://github.com/xq-labs/xq-lesson-lab/releases/download/v1.0.2/XQ.Lesson.Lab3-2.delta" sparkle:deltaFrom="2" length="176538" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="0w+ixJsXil31bB2PYaKGigNhAaslzkE7dIrpiJnGEq2cPAdeGhdM/ehapeWuQizB+mF4bPgvY3MJ588w1qv2Ag=="/>
+                <enclosure url="https://github.com/xq-labs/xq-lesson-lab/releases/download/v1.0.2/XQ.Lesson.Lab3-1.delta" sparkle:deltaFrom="1" length="208062" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="J+3sRCs4COX0AbY151ZLiUxm90qc+EbGfn8tQ5wUAdoi7M9kAjywLHyA1HLKuD7vCUjMO6o2ui1aYkB2WoJvBQ=="/>
+            </sparkle:deltas>
+        </item>
+        <item>
             <title>1.0.1</title>
             <pubDate>Tue, 04 Aug 2026 12:22:21 -0300</pubDate>
             <sparkle:version>2</sparkle:version>
@@ -10,9 +23,6 @@
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
             <enclosure url="https://github.com/xq-labs/xq-lesson-lab/releases/download/v1.0.1/Lesson-Lab-1.0.1.zip" length="5722376" type="application/octet-stream" sparkle:edSignature="Z9nkUp1I1dM9uTaEcAU0qBEvj+a57DhUYf8ucL6MFJNXllGXsNwg5UVsrEwNBh+LDZ1gy/U/o71f731/7hLmBg=="/>
-            <sparkle:deltas>
-                <enclosure url="https://github.com/xq-labs/xq-lesson-lab/releases/download/v1.0.1/XQ.Lesson.Lab2-1.delta" sparkle:deltaFrom="1" length="144478" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="XBCV70ax5St4F7J2zlW+zs9wlbUfMq1k89DE49ZhS0qjxrIDnVYn2260DXlo1AbUeUcowMwYTcJGsLbEXxx2AQ=="/>
-            </sparkle:deltas>
         </item>
         <item>
             <title>1.0</title>

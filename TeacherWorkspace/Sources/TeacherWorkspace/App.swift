@@ -25,6 +25,38 @@ struct LessonLabApp: App {
             exit(0)
         }
 
+        // Framework integrity check: TW_FRAMEWORK_CHECK=1 loads the bundled
+        // competency CSVs, prints what it found, and exits non-zero if
+        // anything is malformed, duplicated or orphaned. Run it before a
+        // release — a silently short framework is hard to notice from the UI.
+        if env["TW_FRAMEWORK_CHECK"] != nil {
+            do {
+                let (framework, diagnostics) = try FrameworkImport.load()
+                print("XQ framework \(framework.version)")
+                print("levels: \(framework.levelLabels.joined(separator: " / "))")
+                print(diagnostics.summary)
+                // TW_FRAMEWORK_SKILL=<id> also dumps one skill, for eyeballing
+                // how a progression actually reads before prompting with it.
+                if let id = env["TW_FRAMEWORK_SKILL"] {
+                    guard let skill = framework.skill(id: id) else {
+                        print("no such skill: \(id)")
+                        exit(1)
+                    }
+                    print("\n\(skill.id) — \(skill.competencyName) — \(skill.name)")
+                    print("detail: \(skill.detail)")
+                    print("example: \(skill.example)")
+                    for rung in skill.progression {
+                        print("  [\(rung.ordinal)] \(rung.label): \(rung.descriptor)")
+                    }
+                }
+                print(diagnostics.isClean ? "clean" : "PROBLEMS FOUND")
+                exit(diagnostics.isClean ? 0 : 1)
+            } catch {
+                print("FRAMEWORK ERROR: \(error.localizedDescription)")
+                exit(1)
+            }
+        }
+
         // Attachment extraction test: TW_EXTRACT_FILE=<path> prints the text
         // FileAttachment pulls out of a file, or reports that it found none.
         // Exits non-zero on nil so a script can assert a format is readable.

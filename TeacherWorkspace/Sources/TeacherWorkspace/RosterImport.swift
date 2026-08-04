@@ -111,25 +111,10 @@ enum RosterImport {
         return trimmed
     }
 
-    /// Minimal quoted-CSV field splitter for one record.
+    /// Quoted-CSV field splitter for one record. Lives in `CSV` now, shared
+    /// with the competency framework importer — rosters inherit its fix for
+    /// doubled quotes for free.
     static func splitRecord(_ line: String, delimiter: Character) -> [String] {
-        var fields: [String] = []
-        var current = ""
-        var inQuotes = false
-        var iterator = line.makeIterator()
-        while let ch = iterator.next() {
-            if inQuotes {
-                if ch == "\"" { inQuotes = false } else { current.append(ch) }
-            } else if ch == "\"" {
-                inQuotes = true
-            } else if ch == delimiter {
-                fields.append(current)
-                current = ""
-            } else {
-                current.append(ch)
-            }
-        }
-        fields.append(current)
-        return fields.map { $0.trimmingCharacters(in: .whitespaces) }
+        CSV.splitRecord(line, delimiter: delimiter)
     }
 }

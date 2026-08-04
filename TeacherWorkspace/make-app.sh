@@ -54,6 +54,11 @@ fi
 # after editing the drawing script.
 [[ -f Resources/AppIcon.icns ]] || swift scripts/make-icon.swift book Resources
 cp Resources/AppIcon.icns "$APP/Contents/Resources/"
+
+# XQ competency framework (CSV + its LICENSE/NOTICE — CC BY 4.0 requires the
+# attribution travel with the data). Bundled rather than downloaded so the
+# Skill Check screen works on a locked-down school network.
+cp -R Resources/XQFramework "$APP/Contents/Resources/"
 cp -R "$LLAMA_FRAMEWORK" "$APP/Contents/Frameworks/"
 [[ -d "$SPARKLE_FRAMEWORK" ]] || { echo "Missing $SPARKLE_FRAMEWORK (swift build fetches it — check Package.swift)"; exit 1; }
 cp -R "$SPARKLE_FRAMEWORK" "$APP/Contents/Frameworks/"

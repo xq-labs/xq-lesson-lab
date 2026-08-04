@@ -56,6 +56,13 @@ final class AppState: ObservableObject {
     @Published var scrollTick = 0
     /// True while the on-device model is generating a reply.
     @Published var isStreaming = false
+    /// Which chat that reply is landing in — `isStreaming` alone can't say, and
+    /// the sidebar needs to badge one row rather than all of them.
+    @Published var streamingChat: String?
+    /// Chats whose last turn errored, and chats whose last turn was cut short.
+    /// Both clear when that chat is sent to again.
+    @Published var failedChats: Set<String> = []
+    @Published var interruptedChats: Set<String> = []
     /// Artifacts created by the assistant in this session, newest first.
     @Published var userRubrics: [Rubric] = []
     @Published var userActivities: [Activity] = []
@@ -328,8 +335,42 @@ final class AppState: ObservableObject {
 
     var messages: [Message] {
         guard view == .chat, let id = activeChat else { return [] }
-        let seeded = classroom.isDemo ? (SampleData.baseMessages[id] ?? []) : []
-        return seeded + (extraMessages[id] ?? [])
+        return messages(in: id)
+    }
+
+    /// Same as `messages`, for a chat that isn't the open one — the sidebar
+    /// reads every row's last turn to work out its status.
+    func messages(in chatId: String) -> [Message] {
+        let seeded = classroom.isDemo ? (SampleData.baseMessages[chatId] ?? []) : []
+        return seeded + (extraMessages[chatId] ?? [])
+    }
+
+    /// Resolved in priority order: what's happening now beats what went wrong,
+    /// which beats whose turn it is.
+    func status(for chatId: String) -> ChatStatus? {
+        // Filed away means dealt with — an archived row shouldn't still be
+        // asking for a turn. Checked here rather than in the row so the header
+        // agrees when an archived chat is opened.
+        if archivedChats.contains(chatId) { return nil }
+        if streamingChat == chatId { return .receiving }
+        if failedChats.contains(chatId) { return .failed }
+        if interruptedChats.contains(chatId) { return .interrupted }
+        guard let last = messages(in: chatId).last, last.role == .assistant,
+              Self.endsWithQuestion(last.text) else { return nil }
+        return .waiting
+    }
+
+    var activeChatStatus: ChatStatus? {
+        guard view == .chat, let id = activeChat else { return nil }
+        return status(for: id)
+    }
+
+    /// "Waiting for you" means the assistant actually asked something, rather
+    /// than every finished chat wearing the badge. Artifact JSON is already
+    /// stripped out of `text` by `applyStreamUpdate`, so the closing character
+    /// is the one the teacher sees.
+    private static func endsWithQuestion(_ text: String) -> Bool {
+        text.trimmingCharacters(in: .whitespacesAndNewlines).hasSuffix("?")
     }
 
     var isWelcome: Bool { view == .chat && activeChat == nil }
@@ -586,8 +627,14 @@ final class AppState: ObservableObject {
     }
 
     func cancelGeneration() {
+        // Only a reply that was actually mid-flight counts as interrupted —
+        // this runs on every chat switch, most of them with nothing running.
+        if generationTask != nil, let id = streamingChat {
+            interruptedChats.insert(id)
+        }
         generationTask?.cancel()
         generationTask = nil
+        streamingChat = nil
         isStreaming = false
     }
 
@@ -682,6 +729,10 @@ final class AppState: ObservableObject {
         // Empty assistant message that the stream fills in.
         extraMessages[id, default: []].append(Message(role: .assistant, text: ""))
         isStreaming = true
+        streamingChat = id
+        // Sending again is the retry, so whatever went wrong last time is over.
+        failedChats.remove(id)
+        interruptedChats.remove(id)
 
         // Deterministic per-send prefix so re-parsing the stream stores each
         // artifact once (idempotent by id).
@@ -698,9 +749,13 @@ final class AppState: ObservableObject {
                 }
             } catch {
                 raw += "\n⚠️ \(error.localizedDescription)"
+                self.failedChats.insert(id)
             }
             self.applyStreamUpdate(chatId: id, raw: raw, idPrefix: artifactIdPrefix, final: true)
             if self.activeChat == id { self.isStreaming = false }
+            // Cleared unconditionally: the badge tracks the chat that was
+            // generating, which isn't always the one on screen.
+            if self.streamingChat == id { self.streamingChat = nil }
             self.generationTask = nil
             self.scrollTick += 1
         }

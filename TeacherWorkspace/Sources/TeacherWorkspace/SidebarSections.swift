@@ -104,6 +104,11 @@ struct ChatRow: View {
                         .foregroundStyle(archived ? theme.sub : theme.text)
                         .lineLimit(1)
                         .truncationMode(.tail)
+                    // Fixed-width, so a long title gives up room to the badge
+                    // rather than the badge shrinking out of legibility.
+                    if let status = state.status(for: chat.id) {
+                        StatusBadge(status: status, theme: theme, compact: true)
+                    }
                     Spacer(minLength: 0)
                 }
                 .padding(.vertical, 7)

@@ -107,6 +107,9 @@ struct ContentView: View {
                     .padding(.horizontal, 9)
                     .background(Capsule().fill(t.accentSoft))
             }
+            if let status = state.activeChatStatus {
+                StatusBadge(status: status, theme: t)
+            }
             Spacer()
             if state.showsDemoPlugins {
                 Button {

@@ -67,6 +67,10 @@ struct SidebarView: View {
 
     private var titleRow: some View {
         HStack(spacing: 8) {
+            AppIconMark(size: 26)
+                // The .icns keeps Apple's 10% margin around the plate, so pull
+                // the name back in to sit 8pt from the artwork, not the canvas.
+                .padding(.trailing, -5)
             Text(AppInfo.productName)
                 .font(.system(size: 16, weight: .bold))
                 .kerning(-0.16)
@@ -381,6 +385,30 @@ struct SidebarView: View {
         .padding(.vertical, 10)
         .overlay(alignment: .top) {
             Rectangle().fill(t.border).frame(height: 1)
+        }
+    }
+}
+
+/// The app icon, shown beside the name in the sidebar. Reads the .icns that
+/// make-app.sh copies into Contents/Resources, so it always matches whatever
+/// `swift scripts/make-icon.swift` last produced. Unbundled dev runs have no
+/// Resources directory — there it renders nothing rather than the generic
+/// placeholder icon AppKit would hand back.
+private struct AppIconMark: View {
+    var size: CGFloat
+
+    private static let image: NSImage? = {
+        guard let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns") else { return nil }
+        return NSImage(contentsOf: url)
+    }()
+
+    var body: some View {
+        if let image = Self.image {
+            Image(nsImage: image)
+                .resizable()
+                .interpolation(.high)
+                .frame(width: size, height: size)
+                .accessibilityHidden(true)
         }
     }
 }

@@ -260,6 +260,14 @@ struct ChatView: View {
             if !mentionSuggestions.isEmpty {
                 mentionPicker
             }
+            // A floating card above the field rather than a .popover — same
+            // shape as the mention picker, and unlike an NSPopover it takes
+            // the app's theme and shows up in snapshots.
+            if state.modelPickerOpen {
+                ModelPickerPopover { state.modelPickerOpen = false }
+                    .fixedSize()
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
             VStack(spacing: 8) {
                 if let notice = state.attachmentNotice {
                     unreadableFileNotice(notice)
@@ -339,11 +347,13 @@ struct ChatView: View {
                             .font(.system(size: 11.5, weight: .semibold))
                     }
                 }
-            } else {
-                Text(footerText)
+            } else if let footer = footerText {
+                Text(footer)
                     .font(.system(size: 11.5))
                     .foregroundStyle(t.dim)
                     .multilineTextAlignment(.center)
+            } else {
+                modelButton
             }
         }
         .frame(maxWidth: 768)
@@ -413,11 +423,34 @@ struct ChatView: View {
         mentionIndex = 0
     }
 
-    private var footerText: String {
+    /// Nil when the model line should be the picker button instead of prose.
+    private var footerText: String? {
         if dictation.isActive { return "Listening — speech is transcribed on this Mac. Click the mic to stop." }
         return state.modelAvailable
-            ? "On-device model: \(LlamaBackend.modelDisplayName) · runs privately on this Mac"
+            ? nil
             : "The assistant needs its on-device model — download it above to start chatting"
+    }
+
+    /// The model line doubles as the way in to switching models — same size
+    /// and colour as the footer prose it replaced, with a chevron to say so.
+    private var modelButton: some View {
+        Button {
+            state.modelPickerOpen = true
+        } label: {
+            HStack(spacing: 4) {
+                Text("On-device model: \(state.activeModel.displayName) · runs privately on this Mac")
+                    .font(.system(size: 11.5))
+                Image(systemName: "chevron.up")
+                    .font(.system(size: 9, weight: .semibold))
+            }
+            .foregroundStyle(t.dim)
+            .padding(.vertical, 3)
+            .padding(.horizontal, 8)
+            .contentShape(RoundedRectangle(cornerRadius: 7))
+        }
+        .buttonStyle(.plain)
+        .hoverHighlight(radius: 7, hover: t.hover)
+        .help("Choose the model that answers")
     }
 
     /// ChatGPT-style "+" menu, with options that fit a teaching assistant.

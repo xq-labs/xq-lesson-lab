@@ -83,13 +83,7 @@ struct ModelSetupCard: View {
         .padding(.bottom, layout == .inline ? 4 : 0)
     }
 
-    private var iconName: String {
-        switch downloader.phase {
-        case .failed: return "exclamationmark.triangle"
-        case .verifying, .installed: return "checkmark.shield"
-        default: return "arrow.down.circle"
-        }
-    }
+    private var iconName: String { ModelPhaseCopy.icon(downloader.phase) }
 
     private var title: String {
         switch downloader.phase {
@@ -103,19 +97,14 @@ struct ModelSetupCard: View {
     }
 
     private var detail: String {
+        let spec = downloader.spec
         switch downloader.phase {
         case .idle:
-            return "\(LlamaBackend.modelDisplayName) (\(Self.fmt(AppInfo.modelByteSize))) runs privately on this Mac — nothing you type ever leaves it."
-        case .downloading(let received, let total):
-            return "\(Self.fmt(received)) of \(Self.fmt(max(total, 1))) — you can keep exploring while it downloads."
-        case .paused(let received):
-            return "\(Self.fmt(received)) so far — resume anytime; it picks up where it left off."
-        case .verifying:
-            return "Checking the file arrived intact."
+            return "\(spec.displayName) (\(ModelPhaseCopy.fmt(spec.byteSize))) runs privately on this Mac — nothing you type ever leaves it."
         case .installed:
             return "You're all set — the assistant is ready."
-        case .failed(let message):
-            return message
+        default:
+            return ModelPhaseCopy.progressDetail(downloader.phase) ?? ""
         }
     }
 
@@ -123,19 +112,74 @@ struct ModelSetupCard: View {
     private var actionButton: some View {
         switch downloader.phase {
         case .idle:
-            primaryButton("Download") { downloader.start() }
+            ModelPrimaryButton("Download") { downloader.start() }
         case .downloading:
-            secondaryButton("Pause") { downloader.pause() }
+            ModelSecondaryButton("Pause") { downloader.pause() }
         case .paused:
-            primaryButton("Resume") { downloader.start() }
+            ModelPrimaryButton("Resume") { downloader.start() }
         case .failed:
-            primaryButton("Retry") { downloader.start() }
+            ModelPrimaryButton("Retry") { downloader.start() }
         case .verifying, .installed:
             EmptyView()
         }
     }
+}
 
-    private func primaryButton(_ label: String, action: @escaping () -> Void) -> some View {
+/// Download-phase wording shared by the first-run card and the Models page,
+/// so the two surfaces can't drift into describing the same state differently.
+enum ModelPhaseCopy {
+    static func icon(_ phase: ModelDownloader.Phase) -> String {
+        switch phase {
+        case .failed: return "exclamationmark.triangle"
+        case .verifying, .installed: return "checkmark.shield"
+        default: return "arrow.down.circle"
+        }
+    }
+
+    /// The mid-download states, where every surface says the same thing. Nil
+    /// for idle and installed — those read differently next to a setup
+    /// headline than they do on a card that already names the model.
+    static func progressDetail(_ phase: ModelDownloader.Phase) -> String? {
+        switch phase {
+        case .downloading(let received, let total):
+            return "\(fmt(received)) of \(fmt(max(total, 1))) — you can keep exploring while it downloads."
+        case .paused(let received):
+            return "\(fmt(received)) so far — resume anytime; it picks up where it left off."
+        case .verifying:
+            return "Checking the file arrived intact."
+        case .failed(let message):
+            return message
+        case .idle, .installed:
+            return nil
+        }
+    }
+
+    static func fmt(_ bytes: Int64) -> String {
+        ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
+    }
+
+    /// What a teacher sees when a model wants more memory than the Mac has.
+    /// It still downloads and still runs — just slowly, once macOS starts
+    /// swapping — so this says that rather than taking the choice away.
+    static func ramWarning(_ spec: ModelSpec) -> String {
+        let gb = Int((Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824).rounded())
+        return "Built for \(spec.recommendedRAMGB) GB of memory — this Mac has \(gb) GB, so replies will be slow."
+    }
+}
+
+/// Filled and outlined buttons, shared by the setup card and the Models page.
+struct ModelPrimaryButton: View {
+    @EnvironmentObject var state: AppState
+    private var t: Theme { state.theme }
+    let label: String
+    let action: () -> Void
+
+    init(_ label: String, action: @escaping () -> Void) {
+        self.label = label
+        self.action = action
+    }
+
+    var body: some View {
         Button(action: action) {
             Text(label)
                 .font(.system(size: 13, weight: .semibold))
@@ -147,8 +191,20 @@ struct ModelSetupCard: View {
         }
         .buttonStyle(.plain)
     }
+}
 
-    private func secondaryButton(_ label: String, action: @escaping () -> Void) -> some View {
+struct ModelSecondaryButton: View {
+    @EnvironmentObject var state: AppState
+    private var t: Theme { state.theme }
+    let label: String
+    let action: () -> Void
+
+    init(_ label: String, action: @escaping () -> Void) {
+        self.label = label
+        self.action = action
+    }
+
+    var body: some View {
         Button(action: action) {
             Text(label)
                 .font(.system(size: 13, weight: .medium))
@@ -159,9 +215,5 @@ struct ModelSetupCard: View {
                 .contentShape(RoundedRectangle(cornerRadius: 8))
         }
         .buttonStyle(.plain)
-    }
-
-    private static func fmt(_ bytes: Int64) -> String {
-        ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
     }
 }

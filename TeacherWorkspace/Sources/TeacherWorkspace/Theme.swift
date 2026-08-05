@@ -31,6 +31,10 @@ struct Theme {
     var sendFg: Color
     var green: Color
     var red: Color
+    /// Caution, not failure — a model that will run badly on this Mac, not one
+    /// that won't run. Paired with `warnSoft` as the chip behind it.
+    var warn: Color
+    var warnSoft: Color
     var scrim: Color
     var isDark: Bool
 
@@ -53,6 +57,8 @@ struct Theme {
         sendFg: Color(hex: 0x212121),
         green: Color(hex: 0x5BBA7D),
         red: Color(hex: 0xE0796C),
+        warn: Color(hex: 0xE8A94A),
+        warnSoft: Color(hex: 0xE8A94A, alpha: 0.16),
         scrim: Color(hex: 0x000000, alpha: 0.55),
         isDark: true
     )
@@ -76,6 +82,8 @@ struct Theme {
         sendFg: Color(hex: 0xFFFFFF),
         green: Color(hex: 0x4CA46A),
         red: Color(hex: 0xC0503E),
+        warn: Color(hex: 0x9A6410),
+        warnSoft: Color(hex: 0xFBF0DA),
         scrim: Color(hex: 0x201E18, alpha: 0.35),
         isDark: false
     )

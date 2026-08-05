@@ -1,20 +1,26 @@
 import Foundation
 import llama
 
-/// Runs the embedded Qwen3.5 GGUF model in-process via llama.cpp (Metal).
-/// The model is loaded lazily on first use and kept resident.
+/// Runs a Qwen3.5 GGUF model in-process via llama.cpp (Metal). Which model is
+/// the teacher's choice — see ModelCatalog. It loads lazily on first use, stays
+/// resident, and reloads when the selection changes.
 final class LlamaBackend: ChatBackend, @unchecked Sendable {
     static let shared = LlamaBackend()
-
-    static let modelFileName = "Qwen3.5-2B-Q4_K_M"
-    static let modelDisplayName = "Qwen3.5-2B"
 
     private let queue = DispatchQueue(label: "llama.generation", qos: .userInitiated)
     private var model: OpaquePointer?
     private var ctx: OpaquePointer?
     private var vocab: OpaquePointer?
+    /// The GGUF currently resident, so a changed selection triggers a reload
+    /// instead of quietly answering from the old model.
+    private var loadedPath: String?
+    /// Which model that file is — prompt rendering differs between families.
+    private var loadedSpec: ModelSpec?
+    /// llama_backend_init/free are process-wide — pair them once, not per load.
+    private var backendReady = false
 
-    private let contextTokens: Int32 = 8192
+    /// From the loaded model's spec; the tiers can differ in context length.
+    private var contextTokens: Int32 = 8192
     // Reply length is per-call now — see GenerationOptions.maxTokens, which
     // still defaults to 1200 for chat.
     private let batchSize: Int32 = 1024
@@ -23,46 +29,29 @@ final class LlamaBackend: ChatBackend, @unchecked Sendable {
 
     // MARK: - Model location
 
+    /// Path of the model that will actually load — the teacher's selection,
+    /// falling back past one whose file is gone.
     static func locateModelFile() -> String? {
-        if let bundled = Bundle.main.path(forResource: modelFileName, ofType: "gguf") {
-            return bundled
-        }
-        // Ship-small builds download the model here on first launch.
-        if let installed = ModelDownloader.installedModelPath {
-            return installed
-        }
-        // TW_MODEL_DIR pins tests to an explicit directory — don't let the
-        // dev checkout's real model leak into them.
-        if ProcessInfo.processInfo.environment["TW_MODEL_DIR"] != nil { return nil }
-        // Dev fallback for `swift run` / debug builds: TeacherWorkspace/Models/
-        let devPath = URL(fileURLWithPath: #filePath)                     // …/Sources/TeacherWorkspace/LlamaBackend.swift
-            .deletingLastPathComponent()                                  // …/Sources/TeacherWorkspace
-            .deletingLastPathComponent()                                  // …/Sources
-            .deletingLastPathComponent()                                  // …/TeacherWorkspace
-            .appendingPathComponent("Models/\(modelFileName).gguf").path
-        return FileManager.default.fileExists(atPath: devPath) ? devPath : nil
+        ModelCatalog.installedPath(for: ModelCatalog.activeSpec)
     }
 
-    /// True if *any* GGUF exists anywhere the app looks. Decides between the
-    /// blocking first-run setup screen (nothing at all — chat can't work) and
-    /// the inline download card (an older model is usable; never block a
-    /// future model upgrade).
-    static func anyModelPresent() -> Bool {
-        if locateModelFile() != nil { return true }
-        let fm = FileManager.default
-        func hasGGUF(_ dir: URL?) -> Bool {
-            guard let dir, let items = try? fm.contentsOfDirectory(atPath: dir.path) else { return false }
-            return items.contains { $0.hasSuffix(".gguf") }
-        }
-        return hasGGUF(Bundle.main.resourceURL) || hasGGUF(ModelDownloader.installDirectory)
-    }
+    /// True if any catalog model is installed. Decides between the blocking
+    /// first-run setup screen (nothing runnable — chat can't work) and the
+    /// inline download card (something is usable; never block an upgrade).
+    static func anyModelPresent() -> Bool { ModelCatalog.hasAnyInstalled }
 
     // MARK: - Loading
 
     /// Must be called on `queue`.
     private func ensureLoaded() throws {
-        if ctx != nil { return }
-        guard let path = Self.locateModelFile() else { throw ChatBackendError.modelFileMissing }
+        let spec = ModelCatalog.activeSpec
+        guard let path = ModelCatalog.installedPath(for: spec) else {
+            throw ChatBackendError.modelFileMissing
+        }
+        if ctx != nil, loadedPath == path { return }
+        // A different model was picked (or the loaded one was deleted): drop
+        // the resident weights before mapping the new file.
+        unloadLocked()
 
         // Route llama/ggml logs to nowhere unless debugging.
         llama_log_set({ level, text, _ in
@@ -71,7 +60,11 @@ final class LlamaBackend: ChatBackend, @unchecked Sendable {
             FileHandle.standardError.write(Data(String(cString: text).utf8))
         }, nil)
 
-        llama_backend_init()
+        if !backendReady {
+            llama_backend_init()
+            backendReady = true
+        }
+        contextTokens = spec.contextTokens
         var modelParams = llama_model_default_params()
         modelParams.n_gpu_layers = 99  // full Metal offload
         guard let model = llama_model_load_from_file(path, modelParams) else {
@@ -92,27 +85,47 @@ final class LlamaBackend: ChatBackend, @unchecked Sendable {
         self.model = model
         self.ctx = ctx
         self.vocab = llama_model_get_vocab(model)
+        self.loadedPath = path
+        self.loadedSpec = spec
     }
 
     /// Frees the Metal context/model. Call before process exit — tearing the
     /// process down with a live context trips a ggml-metal assert in atexit.
     func shutdown() {
         queue.sync {
-            if let ctx { llama_free(ctx) }
-            if let model { llama_model_free(model) }
-            ctx = nil
-            model = nil
-            vocab = nil
-            llama_backend_free()
+            unloadLocked()
+            if backendReady {
+                llama_backend_free()
+                backendReady = false
+            }
         }
+    }
+
+    /// Drops the resident weights, leaving the backend initialised. A model
+    /// switch calls this and lets the next request load the new file; a delete
+    /// calls it so llama.cpp isn't holding the GGUF being removed.
+    func unload() {
+        queue.sync { unloadLocked() }
+    }
+
+    /// Must be called on `queue`.
+    private func unloadLocked() {
+        if let ctx { llama_free(ctx) }
+        if let model { llama_model_free(model) }
+        ctx = nil
+        model = nil
+        vocab = nil
+        loadedPath = nil
+        loadedSpec = nil
     }
 
     // MARK: - Prompt formatting
 
     /// Renders the conversation with the model's chat template, falling back
-    /// to hand-built ChatML (Qwen's native format). The empty `<think>` block
-    /// pre-fills Qwen's reasoning span so replies start immediately instead of
-    /// spending the token budget thinking.
+    /// to hand-built ChatML (Qwen's native format). For models with a thinking
+    /// span, the empty `<think>` block pre-fills it so replies start
+    /// immediately instead of spending the token budget reasoning — a family
+    /// without one (Llama) must not get it, hence the per-spec flag.
     private func renderPrompt(turns: [ChatTurn], options: GenerationOptions) -> String {
         var rendered: String
         if let model, let templated = applyModelTemplate(model: model, turns: turns) {
@@ -124,7 +137,7 @@ final class LlamaBackend: ChatBackend, @unchecked Sendable {
             }
             rendered += "<|im_start|>assistant\n"
         }
-        if !rendered.hasSuffix("</think>\n\n") {
+        if loadedSpec?.usesThinkPrefill ?? true, !rendered.hasSuffix("</think>\n\n") {
             rendered += "<think>\n\n</think>\n\n"
         }
         if let prefix = options.assistantPrefix, !prefix.isEmpty {
@@ -133,7 +146,30 @@ final class LlamaBackend: ChatBackend, @unchecked Sendable {
         return rendered
     }
 
+    /// Applies the GGUF's own chat template, retrying without a system turn if
+    /// the template refuses one. Gemma's template has no system role, and the
+    /// silent fallback below is Qwen-shaped ChatML — the wrong prompt for
+    /// every other family — so it's worth folding the system text into the
+    /// first user turn and asking again before giving up.
     private func applyModelTemplate(model: OpaquePointer, turns: [ChatTurn]) -> String? {
+        if let rendered = renderWithTemplate(model: model, turns: turns) { return rendered }
+        guard turns.contains(where: { $0.role == .system }) else { return nil }
+        return renderWithTemplate(model: model, turns: foldingSystemIntoFirstUser(turns))
+    }
+
+    /// Merges any system turns into the first user turn, for templates that
+    /// only accept user/assistant.
+    private func foldingSystemIntoFirstUser(_ turns: [ChatTurn]) -> [ChatTurn] {
+        let system = turns.filter { $0.role == .system }.map(\.content).joined(separator: "\n\n")
+        var rest = turns.filter { $0.role != .system }
+        guard let first = rest.first, first.role == .user else {
+            return [ChatTurn(role: .user, content: system)] + rest
+        }
+        rest[0] = ChatTurn(role: .user, content: "\(system)\n\n\(first.content)")
+        return rest
+    }
+
+    private func renderWithTemplate(model: OpaquePointer, turns: [ChatTurn]) -> String? {
         guard let tmpl = llama_model_chat_template(model, nil) else { return nil }
         var cMessages: [llama_chat_message] = turns.map {
             llama_chat_message(role: strdup($0.role.rawValue), content: strdup($0.content))

@@ -1,12 +1,28 @@
 import Foundation
 import CryptoKit
 
-/// Downloads the GGUF model on first launch (ship-small distribution).
-/// Resumable, checksum-verified, and installed atomically into
+/// Downloads a GGUF model (ship-small distribution). Resumable,
+/// checksum-verified, and installed atomically into
 /// ~/Library/Application Support/LessonLab/Models/.
+///
+/// One instance per model, vended by `downloader(for:)` — a download in
+/// progress has to survive the teacher navigating away from its card.
 @MainActor
 final class ModelDownloader: NSObject, ObservableObject {
-    static let shared = ModelDownloader()
+    let spec: ModelSpec
+
+    private static var instances: [String: ModelDownloader] = [:]
+
+    static func downloader(for spec: ModelSpec) -> ModelDownloader {
+        if let existing = instances[spec.id] { return existing }
+        let made = ModelDownloader(spec: spec)
+        instances[spec.id] = made
+        return made
+    }
+
+    /// The first-run gate and the inline upgrade card only ever deal with the
+    /// model the app ships as its default.
+    static var shared: ModelDownloader { downloader(for: ModelCatalog.defaultSpec) }
 
     enum Phase: Equatable {
         case idle
@@ -19,46 +35,42 @@ final class ModelDownloader: NSObject, ObservableObject {
 
     @Published private(set) var phase: Phase = .idle
 
-    /// Fires once the model is verified and moved into place, so AppState
-    /// can repaint views that key off `modelAvailable`.
-    var onInstalled: (() -> Void)?
+    /// Fires on every downloader once a model is verified and moved into
+    /// place, so AppState can repaint views that key off `modelAvailable`.
+    static var installObserver: (() -> Void)?
 
     private var task: URLSessionDownloadTask?
     private var resumeData: Data?
     private lazy var session = URLSession(
         configuration: .default, delegate: DownloadDelegate(owner: self), delegateQueue: nil)
 
-    /// Test override: TW_MODEL_URL points at a local server; TW_MODEL_SHA256
-    /// replaces the expected checksum (or "skip" disables verification).
-    nonisolated static var sourceURL: URL {
-        let env = ProcessInfo.processInfo.environment
-        if let override = env["TW_MODEL_URL"], let url = URL(string: override) { return url }
-        return URL(string: AppInfo.modelDownloadURL)!
+    private init(spec: ModelSpec) {
+        self.spec = spec
+        super.init()
+        // A model that's already on disk starts installed, so the Models page
+        // paints the right state without anyone having to prime it.
+        if ModelCatalog.isInstalled(spec) { phase = .installed }
     }
 
-    private nonisolated static var expectedSHA256: String? {
+    /// Test override: TW_MODEL_URL points at a local server; TW_MODEL_SHA256
+    /// replaces the expected checksum (or "skip" disables verification). Both
+    /// apply to the default model only — a second model in the catalog must
+    /// not silently inherit the override and install the wrong file.
+    nonisolated var sourceURL: URL {
         let env = ProcessInfo.processInfo.environment
-        if let override = env["TW_MODEL_SHA256"] {
+        if isDefault, let override = env["TW_MODEL_URL"], let url = URL(string: override) { return url }
+        return URL(string: spec.downloadURL)!
+    }
+
+    private nonisolated var expectedSHA256: String? {
+        let env = ProcessInfo.processInfo.environment
+        if isDefault, let override = env["TW_MODEL_SHA256"] {
             return override == "skip" ? nil : override
         }
-        return AppInfo.modelSHA256
+        return spec.sha256
     }
 
-    /// Where the downloaded model is installed (checked by locateModelFile).
-    nonisolated static var installDirectory: URL? {
-        if let override = ProcessInfo.processInfo.environment["TW_MODEL_DIR"] {
-            return URL(fileURLWithPath: override, isDirectory: true)
-        }
-        guard let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-        else { return nil }
-        return base.appendingPathComponent("\(AppInfo.supportDirectory)/Models", isDirectory: true)
-    }
-
-    nonisolated static var installedModelPath: String? {
-        guard let path = installDirectory?
-            .appendingPathComponent("\(LlamaBackend.modelFileName).gguf").path else { return nil }
-        return FileManager.default.fileExists(atPath: path) ? path : nil
-    }
+    private nonisolated var isDefault: Bool { spec.id == ModelCatalog.defaultSpec.id }
 
     // MARK: - Controls
 
@@ -67,12 +79,15 @@ final class ModelDownloader: NSObject, ObservableObject {
         case .downloading, .verifying, .installed: return
         default: break
         }
-        phase = .downloading(received: receivedSoFar, total: AppInfo.modelByteSize)
+        // Nothing is fetched without a published, checksummed asset behind it;
+        // the UI shows those models as "Coming soon" rather than a button.
+        guard spec.canDownload else { return }
+        phase = .downloading(received: receivedSoFar, total: spec.byteSize)
         if let resumeData {
             task = session.downloadTask(withResumeData: resumeData)
             self.resumeData = nil
         } else {
-            task = session.downloadTask(with: Self.sourceURL)
+            task = session.downloadTask(with: sourceURL)
         }
         task?.resume()
     }
@@ -86,6 +101,19 @@ final class ModelDownloader: NSObject, ObservableObject {
                 self.phase = .paused(received: self.receivedSoFar)
             }
         }
+    }
+
+    /// Deletes the downloaded file and returns the card to its "Download"
+    /// state. The caller unloads the model first — llama.cpp keeps the GGUF
+    /// mapped while it's loaded.
+    func removeInstalled() throws {
+        task?.cancel()
+        task = nil
+        resumeData = nil
+        try ModelCatalog.remove(spec)
+        // A bundled or dev-checkout copy isn't ours to delete, and is still
+        // there afterwards — don't offer to download what's already present.
+        phase = ModelCatalog.isInstalled(spec) ? .installed : .idle
     }
 
     private var receivedSoFar: Int64 {
@@ -102,7 +130,7 @@ final class ModelDownloader: NSObject, ObservableObject {
         Task { @MainActor in
             // total is -1 when the server omits Content-Length; fall back to
             // the known release size so the bar still moves.
-            let knownTotal = total > 0 ? total : AppInfo.modelByteSize
+            let knownTotal = total > 0 ? total : self.spec.byteSize
             if case .paused = self.phase { return }
             self.phase = .downloading(received: received, total: knownTotal)
         }
@@ -113,22 +141,24 @@ final class ModelDownloader: NSObject, ObservableObject {
     fileprivate nonisolated func didFinish(tmp: URL) {
         Task { @MainActor in self.phase = .verifying }
         do {
-            if let expected = Self.expectedSHA256 {
+            if let expected = expectedSHA256 {
                 let actual = try Self.sha256(of: tmp)
                 guard actual == expected else {
                     throw DownloadError.checksumMismatch
                 }
             }
-            guard let dir = Self.installDirectory else { throw DownloadError.noInstallDirectory }
+            guard let dir = ModelCatalog.installDirectory,
+                  let dest = ModelCatalog.installURL(for: spec) else {
+                throw DownloadError.noInstallDirectory
+            }
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-            let dest = dir.appendingPathComponent("\(LlamaBackend.modelFileName).gguf")
             if FileManager.default.fileExists(atPath: dest.path) {
                 try FileManager.default.removeItem(at: dest)
             }
             try FileManager.default.moveItem(at: tmp, to: dest)
             Task { @MainActor in
                 self.phase = .installed
-                self.onInstalled?()
+                ModelDownloader.installObserver?()
             }
         } catch {
             Task { @MainActor in

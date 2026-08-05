@@ -164,7 +164,18 @@ data never leaves the teacher's Mac.**
 
 ## Phase 4 — Quality & distribution
 
-- [ ] Model tiering: Qwen3.5-4B option on capable Macs (+1.3 GB, no code change — just swap GGUF; distribution side is ready — new fixed-tag release + AppInfo constants, see RELEASING.md); optional BYO-API-key cloud backend via existing `ChatBackend` protocol (local stays default)
+- [x] Model tiering: the app carries a catalog of models (`ModelCatalog.swift`)
+      instead of one hardcoded GGUF — a Models page (`TW_VIEW=models`) and a picker
+      on the model line under the composer let a teacher switch, download, and
+      delete models, and `LlamaBackend` reloads on the switch. Five tiers ship:
+      Qwen3.5 0.8B / 2B (default) / 4B / 9B plus Llama 3.2 3B as a second opinion.
+      Everything but the default streams from Hugging Face — GitHub release assets
+      stop at 2 GB, which the 4B and 9B exceed. Models wanting more RAM than the
+      Mac has warn but stay downloadable; `usesThinkPrefill` keeps the Qwen-only
+      `<think>` prefill off other families. Probes: `TW_MODEL_SWITCH_TEST`,
+      `TW_MODEL_DELETE_TEST`, `TW_MODEL_ID`
+- [ ] Optional BYO-API-key cloud backend via the existing `ChatBackend` protocol
+      (local stays default)
 - [~] Distribution (July 31): ship-small builds (~15 MB) with first-launch
       model download (resumable, SHA-256 verified — `ModelDownload.swift`,
       `TW_MODEL_DL_TEST` probe); with no model at all the download is a

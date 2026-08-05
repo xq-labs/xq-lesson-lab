@@ -10,7 +10,7 @@ struct LessonLabApp: App {
 
     init() {
         // Snapshot mode for automated UI verification:
-        // TW_SNAPSHOT=<out.png> [TW_THEME=light] [TW_SETTINGS=1] [TW_VIEW=rubrics|activities|pogs|integrations|welcome|onboarding] [TW_PREVIEW=rubric|activity|pog]
+        // TW_SNAPSHOT=<out.png> [TW_THEME=light] [TW_SETTINGS=1] [TW_MODEL_PICKER=1] [TW_VIEW=rubrics|activities|pogs|integrations|models|welcome|onboarding] [TW_PREVIEW=rubric|activity|pog]
         // The app launches normally, configures state, captures its own window
         // after the first frame, writes the PNG, and exits.
         let env = ProcessInfo.processInfo.environment
@@ -244,6 +244,62 @@ struct LessonLabApp: App {
             exit(0)
         }
 
+        // Model-delete probe: TW_MODEL_DELETE_TEST=1 (with TW_MODEL_ID and
+        // TW_MODEL_DIR) runs the real delete path and reports what's left and
+        // which model took over — deleting gigabytes deserves a regression test.
+        if env["TW_MODEL_DELETE_TEST"] != nil {
+            MainActor.assumeIsolated {
+                let spec = env["TW_MODEL_ID"].flatMap(ModelCatalog.spec(id:)) ?? ModelCatalog.activeSpec
+                print("before: \(ModelCatalog.installedSpecs.map(\.id).joined(separator: ", "))")
+                print("removable: \(ModelCatalog.isRemovable(spec))")
+                AppState().deleteModel(spec)
+                print("after: \(ModelCatalog.installedSpecs.map(\.id).joined(separator: ", "))")
+                print("active: \(ModelCatalog.activeSpec.id)")
+                print("needsSetup: \(!LlamaBackend.anyModelPresent())")
+            }
+            exit(0)
+        }
+
+        // Model-switch probe: TW_MODEL_SWITCH_TEST=1 answers the same prompt
+        // from every installed model in turn, so the reload path — freeing a
+        // live Metal context and mapping a different GGUF — is exercised
+        // without a GUI. Needs two models installed to prove anything.
+        if env["TW_MODEL_SWITCH_TEST"] != nil {
+            let specs = ModelCatalog.installedSpecs
+            print("installed: \(specs.map(\.id).joined(separator: ", "))")
+            guard specs.count > 1 else {
+                print("SWITCH TEST SKIPPED: needs two installed models")
+                exit(2)
+            }
+            // The selection is a real preference — put it back before exiting
+            // (which skips any defer) so a probe run doesn't quietly change
+            // which model the app answers with.
+            let previousSelection = ModelCatalog.selectedID
+            for spec in specs {
+                ModelCatalog.selectedID = spec.id
+                LlamaBackend.shared.unload()
+                print("model: \(spec.id) → \(ModelCatalog.installedPath(for: spec) ?? "nil")")
+                let turns = [ChatTurn(role: .user, content: "Reply with one short sentence about photosynthesis.")]
+                let semaphore = DispatchSemaphore(value: 0)
+                Task.detached {
+                    do {
+                        let reply = try await LlamaBackend.shared.complete(
+                            turns: turns, options: GenerationOptions(temperature: 0, seed: 1, maxTokens: 24))
+                        print("reply: \(reply.trimmingCharacters(in: .whitespacesAndNewlines))")
+                    } catch {
+                        print("SWITCH TEST ERROR: \(error.localizedDescription)")
+                    }
+                    fflush(stdout)
+                    semaphore.signal()
+                }
+                semaphore.wait()
+            }
+            ModelCatalog.selectedID = previousSelection
+            LlamaBackend.shared.shutdown()
+            print("shutdown: clean")
+            exit(0)
+        }
+
         guard env["TW_SNAPSHOT"] != nil else { return }
         MainActor.assumeIsolated {
             let snapState = AppState()
@@ -255,6 +311,7 @@ struct LessonLabApp: App {
             case "integrations": snapState.setView(.integrations)
             case "classroom": snapState.setView(.classroom)
             case "skillcheck": snapState.setView(.skillCheck)
+            case "models": snapState.setView(.models)
             case "welcome": snapState.newChat()
             case "onboarding": snapState.onboardingOpen = true
             default: break
@@ -284,6 +341,8 @@ struct LessonLabApp: App {
             if let draft = env["TW_DRAFT"] { snapState.draft = draft }
             // TW_SETTINGS=1 opens the settings popover above the footer.
             if env["TW_SETTINGS"] != nil { snapState.settingsOpen = true }
+            // TW_MODEL_PICKER=1 opens the model picker under the composer.
+            if env["TW_MODEL_PICKER"] != nil { snapState.modelPickerOpen = true }
             _snapshotState = snapState
         }
     }
@@ -461,8 +520,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @MainActor private func runModelDownloadTest() {
-        let dl = ModelDownloader.shared
-        print("source: \(ModelDownloader.sourceURL)")
+        // TW_MODEL_ID picks which catalog model to pull; the default one is
+        // what first-launch downloads, so that's the default here too.
+        let spec = ProcessInfo.processInfo.environment["TW_MODEL_ID"]
+            .flatMap(ModelCatalog.spec(id:)) ?? ModelCatalog.defaultSpec
+        let dl = ModelDownloader.downloader(for: spec)
+        print("model: \(spec.id)")
+        print("source: \(dl.sourceURL)")
+        // A model whose asset isn't published can't be fetched — say so rather
+        // than sitting on a phase that will never change.
+        guard spec.canDownload else {
+            print("phase: unavailable — no published asset for \(spec.id) yet")
+            exit(2)
+        }
         dl.start()
         var lastPhase: ModelDownloader.Phase?
         Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { timer in

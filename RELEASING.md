@@ -9,10 +9,12 @@ updates itself. The moving parts:
 | `appcast.xml` (Sparkle feed) + landing page | Vercel (`website/`) | Stable URL the app polls for updates |
 | Version numbers + URLs | `TeacherWorkspace/Sources/TeacherWorkspace/AppInfo.swift` | Single source of truth — scripts read it |
 
-The app ships **small** (~15 MB): the 1.2 GB model is downloaded on first
-launch from a fixed-tag GitHub release (`model-qwen3.5-2b`), verified by
-SHA-256 (`AppInfo.modelSHA256`), and installed under
-`~/Library/Application Support/LessonLab/Models/`.
+The app ships **small** (~15 MB): the 1.2 GB default model is downloaded on
+first launch from a fixed-tag GitHub release (`model-qwen3.5-2b`), verified by
+SHA-256, and installed under `~/Library/Application Support/LessonLab/Models/`.
+Every model the app offers is one `ModelSpec` in
+`TeacherWorkspace/Sources/TeacherWorkspace/ModelCatalog.swift` — URL, checksum,
+size, and context length together.
 
 ## One-time setup
 
@@ -101,17 +103,37 @@ different Mac means importing it there (`generate_keys -f file`).
 6. Sanity check: install the **previous** DMG, open it, and confirm
    "Check for Updates…" (app menu) offers the new version.
 
-## Model upgrades (e.g. the 4B tier)
+## Adding a model
 
-Upload the new GGUF under a new fixed tag (`model-qwen3.5-4b`), update
-`AppInfo.modelDownloadURL` / `modelSHA256` / `modelByteSize`
-(`shasum -a 256`, `stat -f%z`), and ship an app release. Existing installs
-keep their current model until the app asks for the new one.
+A model is one `ModelSpec` in `ModelCatalog.swift`. No upload is needed —
+everything except the default streams from Hugging Face, because **GitHub
+release assets are capped at 2 GB** and the 4B (2.74 GB) and 9B (5.68 GB)
+both exceed it. Only the default 2B is mirrored to our own `model-qwen3.5-2b`
+tag, so first launch depends on nothing but GitHub.
+
+Hugging Face stores each file's SHA-256 as its LFS `oid`, which is exactly the
+checksum the app verifies — so both `sha256` and `byteSize` come from one API
+call, with nothing downloaded:
+
+```bash
+curl -s "https://huggingface.co/api/models/unsloth/<repo>/tree/main" | python3 -c "import json,sys;[print(f['path'], f['lfs']['size'], f['lfs']['oid']) for f in json.load(sys.stdin) if f['path'].endswith('.gguf')]"
+```
+
+The download URL is `https://huggingface.co/<repo>/resolve/main/<file>.gguf`
+(it 302s to the HF CDN; the app follows it). Set `usesThinkPrefill` to false
+for any family without a `<think>` span — Llama, for instance — or its prompt
+gets a Qwen reasoning block it can't parse. Put the licence in `license`; it
+shows on the card. A spec with `sha256: nil` / `available: false` renders as
+"Coming soon" and can't be downloaded, which is how a model ships before its
+asset is published. New domains must also go in `AppInfo.allowlistDomains`,
+which the app quotes to teachers when a download fails.
 
 ## Testing the pipeline without shipping
 
 - Download flow: `TW_MODEL_DL_TEST=1 TW_MODEL_URL=… TW_MODEL_SHA256=… TW_MODEL_DIR=…`
-  (see README § probes) runs it headlessly against any server.
+  (see README § probes) runs it headlessly against any server. `TW_MODEL_ID=…`
+  picks a non-default catalog model; the URL/checksum overrides only apply to
+  the default one.
 - Ship-small bundle: `./make-app.sh` then launch — the setup card should
   appear above the composer.
 - Embedded bundle: `./make-app.sh --bundle-model` — no setup card.

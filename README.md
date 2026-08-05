@@ -33,5 +33,7 @@ offline/USB installs).
 
 The app has env-var probes for automated verification without a GUI session —
 `TW_SNAPSHOT` (window PNG capture), `TW_PROBE` (model smoke test),
-`TW_MODEL_DL_TEST` (first-launch download flow), and more. See the header of
+`TW_MODEL_DL_TEST` (first-launch download flow), `TW_MODEL_SWITCH_TEST` and
+`TW_MODEL_DELETE_TEST` (switching between and removing installed models), and
+more. See the header of
 [`App.swift`](TeacherWorkspace/Sources/TeacherWorkspace/App.swift).

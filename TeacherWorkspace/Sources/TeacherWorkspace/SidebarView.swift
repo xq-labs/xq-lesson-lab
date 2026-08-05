@@ -486,6 +486,30 @@ struct SettingsPopover: View {
             // "this goes somewhere". Negative inset lets the fill run wider
             // than the popover's text padding.
             Button {
+                state.setView(.models)
+                state.settingsOpen = false
+            } label: {
+                HStack(spacing: 9) {
+                    Image(systemName: "cpu")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(t.sub)
+                        .frame(width: 16)
+                    Text("Models")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(t.text)
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(t.dim)
+                }
+                .padding(.vertical, 7)
+                .padding(.horizontal, 8)
+                .contentShape(RoundedRectangle(cornerRadius: 8))
+            }
+            .buttonStyle(.plain)
+            .hoverHighlight(radius: 8, hover: t.hover)
+            .padding(.horizontal, -4)
+            Button {
                 state.setView(.integrations)
                 state.settingsOpen = false
             } label: {

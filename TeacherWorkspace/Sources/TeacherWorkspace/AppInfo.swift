@@ -32,13 +32,13 @@ enum AppInfo {
     /// Always points at the newest DMG (fixed asset name per release).
     static let latestDMGURL = "https://github.com/\(githubRepo)/releases/latest/download/Lesson-Lab.dmg"
 
-    /// The model lives in its own fixed-tag release so app updates never
-    /// re-upload 1.2 GB; a model upgrade is a new tag + new constants here.
-    static let modelDownloadURL = "https://github.com/\(githubRepo)/releases/download/model-qwen3.5-2b/Qwen3.5-2B-Q4_K_M.gguf"
-    static let modelSHA256 = "aaf42c8b7c3cab2bf3d69c355048d4a0ee9973d48f16c731c0520ee914699223"
-    static let modelByteSize: Int64 = 1_280_835_840
+    /// Models are described one spec at a time in ModelCatalog.swift — each
+    /// with its own fixed-tag release, checksum, and size.
 
     /// Domains school IT departments need to allow for download + updates.
+    /// Hugging Face serves every model but the default (GitHub release assets
+    /// stop at 2 GB), redirecting from huggingface.co to its CDN.
     static let allowlistDomains = ["github.com", "objects.githubusercontent.com",
+                                   "huggingface.co", "cdn.hf.co", "cdn-lfs.hf.co",
                                    URL(string: websiteURL)?.host ?? "xq-lesson-lab.vercel.app"]
 }

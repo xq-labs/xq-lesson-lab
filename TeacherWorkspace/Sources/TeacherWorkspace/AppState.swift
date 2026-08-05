@@ -2,7 +2,7 @@ import SwiftUI
 import Combine
 
 enum MainView: Hashable {
-    case chat, rubrics, activities, pogs, quizzes, skillCheck, integrations, classroom
+    case chat, rubrics, activities, pogs, quizzes, skillCheck, integrations, classroom, models
 }
 
 @MainActor
@@ -11,6 +11,9 @@ final class AppState: ObservableObject {
     @Published var activeChat: String? = "c1"
     @Published var themeName: String = "dark"
     @Published var settingsOpen = false
+    /// Model picker hanging off the model line under the composer. Lives here
+    /// (like `settingsOpen`) so snapshots can open it.
+    @Published var modelPickerOpen = false
     /// First-run welcome tour overlay — reopenable from the header "?" button.
     @Published var onboardingOpen = false
     /// Persisted so the tour only auto-opens on the first launch.
@@ -111,6 +114,9 @@ final class AppState: ObservableObject {
     /// First run with no model at all: the app is unusable, so setup blocks
     /// the whole UI. Once any model exists, downloads never block again.
     var needsModelSetup: Bool { !modelAvailable && !LlamaBackend.anyModelPresent() }
+    /// The model answering right now — the picker and the composer footer
+    /// both read this rather than a fixed name.
+    var activeModel: ModelSpec { ModelCatalog.activeSpec }
 
     var theme: Theme { themeName == "light" ? .light : .dark }
 
@@ -154,7 +160,7 @@ final class AppState: ObservableObject {
             .sink { [weak self] _ in self?.persistNow() }
         // The setup card observes the downloader directly; this nudge is for
         // everything else that keys off `modelAvailable` (composer footer).
-        ModelDownloader.shared.onInstalled = { [weak self] in self?.objectWillChange.send() }
+        ModelDownloader.installObserver = { [weak self] in self?.objectWillChange.send() }
         terminateObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.willTerminateNotification, object: nil, queue: .main
         ) { [weak self] _ in
@@ -335,6 +341,7 @@ final class AppState: ObservableObject {
         case .skillCheck: return "Skill Check"
         case .integrations: return "Plugins"
         case .classroom: return "My Classroom"
+        case .models: return "Models"
         }
     }
 
@@ -642,6 +649,32 @@ final class AppState: ObservableObject {
     func setView(_ v: MainView) {
         view = v
         settingsOpen = false
+    }
+
+    // MARK: - Models
+
+    /// Switches the model a reply comes from. The weights are dropped now and
+    /// the new ones load on the next request, so the switch costs nothing
+    /// until the teacher actually sends something.
+    func selectModel(_ spec: ModelSpec) {
+        guard ModelCatalog.isInstalled(spec), spec.id != activeModel.id else { return }
+        cancelGeneration()
+        ModelCatalog.selectedID = spec.id
+        LlamaBackend.shared.unload()
+        objectWillChange.send()
+    }
+
+    /// Deletes a downloaded model, freeing its gigabytes. Deleting the active
+    /// one falls back to whatever else is installed (ModelCatalog.activeSpec);
+    /// deleting the last one returns the app to the first-run gate.
+    func deleteModel(_ spec: ModelSpec) {
+        cancelGeneration()
+        // llama.cpp keeps the GGUF mapped while it's loaded — unload before
+        // the file goes away.
+        LlamaBackend.shared.unload()
+        try? ModelDownloader.downloader(for: spec).removeInstalled()
+        if ModelCatalog.selectedID == spec.id { ModelCatalog.selectedID = nil }
+        objectWillChange.send()
     }
 
     func openChat(_ id: String) {

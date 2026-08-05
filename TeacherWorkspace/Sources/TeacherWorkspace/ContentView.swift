@@ -58,6 +58,7 @@ struct ContentView: View {
         .onTapGesture {
             if state.settingsOpen { state.settingsOpen = false }
             if state.scheduleOpen { state.scheduleOpen = false }
+            if state.modelPickerOpen { state.modelPickerOpen = false }
             if editingTitle { commitTitleEdit() }
         }
     }
@@ -190,6 +191,7 @@ struct ContentView: View {
         case .skillCheck: SkillCheckView()
         case .integrations: IntegrationsView()
         case .classroom: ClassroomView()
+        case .models: ModelsView()
         }
     }
 }

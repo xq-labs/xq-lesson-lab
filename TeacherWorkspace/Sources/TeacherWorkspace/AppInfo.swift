@@ -8,8 +8,8 @@ enum AppInfo {
 
     /// Marketing version + build number. make-app.sh reads these into the
     /// Info.plist, and the appcast must match — bump both here per release.
-    static let version = "1.0.2"
-    static let build = 3
+    static let version = "1.0.3"
+    static let build = 4
 
     /// Bundle assembled by make-app.sh; kept in sync with it by hand.
     static let appBundleName = "\(productName).app"

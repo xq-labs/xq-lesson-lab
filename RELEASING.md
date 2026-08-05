@@ -98,8 +98,13 @@ different Mac means importing it there (`generate_keys -f file`).
    this step is the only thing that keeps it current — no separate edit. (The
    values baked into `index.html` are just the no-JS fallback; refreshing them
    is optional.)
-5. Publish: `gh release create v<version> release/v<version>/Lesson-Lab.dmg
-   release/v<version>/*.zip release/v<version>/*.delta --title "v<version>"`.
+5. Publish: `gh release create v<version> --repo xq-labs/xq-lesson-lab
+   release/v<version>/Lesson-Lab.dmg release/v<version>/appcast/*.zip
+   release/v<version>/appcast/*.delta --title "XQ Lesson Lab <version>"`.
+   ⚠️ `--repo` is not optional: this checkout's `origin` is
+   `xq-labs/xq-learning-workspace`, while the app downloads from — and Vercel
+   deploys — `xq-labs/xq-lesson-lab`. Without it the assets land in the wrong
+   repo and every URL in the appcast 404s. Push the code to both remotes.
 6. Sanity check: install the **previous** DMG, open it, and confirm
    "Check for Updates…" (app menu) offers the new version.
 

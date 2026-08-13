@@ -42,6 +42,9 @@ struct ChatView: View {
                     }
                 }
                 .frame(maxWidth: 640)
+                skillCheckCard
+                    .frame(maxWidth: 640)
+                    .padding(.top, 12)
                 if state.classroom.isDemo {
                     Button {
                         state.setView(.classroom)
@@ -65,6 +68,38 @@ struct ChatView: View {
             .frame(maxWidth: .infinity)
             .padding(24)
         }
+    }
+
+    /// The mastery layer's front door — a navigation card, not a prompt seed,
+    /// so it sits apart from the chat suggestions above it.
+    private var skillCheckCard: some View {
+        Button {
+            state.setView(.skillCheck)
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "checkmark.seal")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(t.accent)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Skill Check")
+                        .font(.system(size: 13.5, weight: .semibold))
+                        .foregroundStyle(t.text)
+                    Text("Place student work on an XQ competency progression — it drafts, you decide")
+                        .font(.system(size: 12.5))
+                        .foregroundStyle(t.sub)
+                }
+                Spacer()
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(t.sub)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(14)
+            .contentShape(RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+        .hoverHighlight(radius: 12, hover: t.hover, base: t.card)
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(t.border))
     }
 
     private func suggestionCard(_ sug: SampleData.Suggestion) -> some View {

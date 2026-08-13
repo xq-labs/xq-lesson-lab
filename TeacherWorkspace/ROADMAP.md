@@ -236,15 +236,21 @@ A short, sharp pass that removes what a general-purpose assistant would have
 and the bets don't need — full work order with file:line refs and decode-safety
 notes in `CLEANUP.md`.
 
-- [ ] Park email generation (keep rendering saved drafts — never eat teacher data)
-- [ ] Re-center the welcome screen: 4 focused cards + a Skill Check card
-- [ ] Plugins tab down to one honest SOON card (Google Classroom); remove the
-      cosmetic Skills sub-tab
-- [ ] Delete the dead class-context picker write path (superseded by @mentions;
-      `contextByChat` and its store field stay)
-- [ ] Retire the hardcoded PoG competency list: prompt draws from the
-      framework's 5 learner outcomes, nil-safe fallback (may slide to Phase 6
-      kickoff)
+- [x] Park email generation (keep rendering saved drafts — never eat teacher
+      data). Verified: a store with a saved draft decodes with the draft
+      intact (`TW_STORE_CHECK` now prints the email count).
+- [x] Re-center the welcome screen: 4 focused cards + a Skill Check
+      navigation card (until now the only entry point was one sidebar row)
+- [x] Plugins tab down to one honest SOON card (Google Classroom); removed
+      the cosmetic Skills sub-tab — its install toggles were read by nothing
+- [x] Delete the dead class-context picker write path (superseded by
+      @mentions; `contextByChat` and its store field stay)
+- [x] Retire the hardcoded PoG competency list: the prompt draws the Portrait
+      vocabulary from the framework's 5 learner outcomes (nil-safe fallback
+      to the old names while the framework loads; `TW_PROBE` adopts it
+      synchronously). Verified live: a generated PoG used "Generous
+      Collaborators for Tough Problems" / "Learners for Life". Surfacing CC BY
+      attribution on PoG cards lands with Phase 6.
 
 ## Phase 5 — Mastery in Place (the scanner)
 

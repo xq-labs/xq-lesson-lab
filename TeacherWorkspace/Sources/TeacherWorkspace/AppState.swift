@@ -213,6 +213,11 @@ final class AppState: ObservableObject {
         if PersistenceStore.fileURL != nil, !hasSeenOnboarding {
             onboardingOpen = true
         }
+        // The system prompt's Portrait vocabulary comes from the XQ framework
+        // (see `systemPrompt`), so start the load now instead of waiting for
+        // the Skill Check screen's first appearance. Async — the prompt falls
+        // back to the old hardcoded names for the few ms before it's ready.
+        FrameworkStore.shared.loadIfNeeded()
         // Debounced autosave — objectWillChange fires on every mutation; by
         // the time the debounce elapses the new state is in place.
         saveCancellable = objectWillChange
@@ -964,9 +969,19 @@ final class AppState: ObservableObject {
         let activityTitles = allActivities.prefix(6).map(\.title).joined(separator: ", ")
         if !rubricTitles.isEmpty { p += "- Rubric library: \(rubricTitles).\n" }
         if !activityTitles.isEmpty { p += "- Activity library: \(activityTitles).\n" }
+        // The Portrait vocabulary is the XQ framework's learner outcomes, so
+        // generated PoGs and Skill Check speak the same language instead of
+        // two unconnected competency lists (CLEANUP.md Stage B). The hardcoded
+        // names survive only as the fallback for the few ms before the
+        // framework finishes loading. Surfacing the CC BY attribution on PoG
+        // artifact cards lands with Portrait decomposition (ROADMAP Phase 6).
+        let pogNames = FrameworkStore.shared.framework?.learnerOutcomes.map(\.name)
+            ?? ["Critical Thinking", "Effective Communication", "Collaboration",
+                "Self-Direction", "Civic Engagement"]
+        let pogList = pogNames.joined(separator: ", ")
         p += """
-        - Portraits of a Graduate (PoG): competency portraits with 5 competencies \
-        (Critical Thinking, Effective Communication, Collaboration, Self-Direction, Civic Engagement).
+        - Portraits of a Graduate (PoG): competency portraits with \(pogNames.count) competencies \
+        (\(pogList)).
 
         Style: be concise and practical. Prefer short lists over long prose. Give concrete, \
         classroom-ready suggestions. Don't invent data about specific students beyond the context above.
@@ -983,7 +998,7 @@ final class AppState: ObservableObject {
         Quiz or exit ticket (3-10 questions; "choices" optional — omit for short answer; keep answers brief):
         {"type":"quiz","title":"...","subtitle":"one line","questions":[{"prompt":"...","choices":["...","...","...","..."],"answer":"B"},{"prompt":"...","answer":"short answer"}]}
         Lesson plan: use the activity type with "format":"Lesson plan" and the steps as the agenda.
-        PoG (exactly these 5 competencies: Critical Thinking, Effective Communication, Collaboration, Self-Direction, Civic Engagement; level is 1-5):
+        PoG (exactly these \(pogNames.count) competencies: \(pogList); level is 1-5):
         {"type":"pog","title":"Student Name — PoG Draft","subtitle":"one line","competencies":[{"name":"...","description":"one line","level":3}]}
         Only the types rubric, activity, quiz, and pog exist. For every other request — questions, \
         summaries, advice, anything conversational — reply in plain text with NO code block.

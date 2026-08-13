@@ -20,6 +20,16 @@ final class FrameworkStore: ObservableObject {
 
     private init() {}
 
+    /// Synchronous adoption for headless probe paths (TW_PROBE), where the
+    /// async load's main-actor Task never gets to run because the probe
+    /// blocks the main thread on a semaphore. The app itself always goes
+    /// through `loadIfNeeded`.
+    func adopt(_ loaded: XQFramework) {
+        guard framework == nil else { return }
+        framework = loaded
+        phase = .ready
+    }
+
     func loadIfNeeded() {
         guard phase == .idle else { return }
         phase = .loading

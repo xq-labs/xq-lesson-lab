@@ -5,6 +5,10 @@ Phase 5 starts. Every item carries file:line references and a decode-safety
 note, because the one rule that outranks focus is: **never silently delete a
 teacher's saved data.***
 
+**Status: executed, Aug 2026** — Stages A and B landed as five commits on
+`develop`; outcomes recorded per item in `ROADMAP.md` Phase 4.5. Line numbers
+below describe the tree as it was when the pass was planned.
+
 ## The test
 
 Keep what reads from or writes to the competency DNA, or protects student

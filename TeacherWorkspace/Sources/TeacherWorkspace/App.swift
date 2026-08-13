@@ -287,6 +287,12 @@ struct LessonLabApp: App {
         // Headless generation probe: TW_PROBE="<prompt>" streams a reply to
         // stdout and exits. Used for automated smoke tests of the model.
         if let prompt = env["TW_PROBE"] {
+            // Load the framework synchronously so the probe's prompt carries
+            // the real Portrait vocabulary — the async load's main-actor Task
+            // can't run while the semaphore below holds the main thread.
+            if let (loaded, _) = try? FrameworkImport.load() {
+                FrameworkStore.shared.adopt(loaded)
+            }
             let turns = [
                 ChatTurn(role: .system, content: AppState().systemPrompt(chatContext: nil)),
                 ChatTurn(role: .user, content: prompt),

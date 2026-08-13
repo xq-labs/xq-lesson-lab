@@ -15,6 +15,10 @@ enum ArtifactParser {
         var visibleText: String
         var artifacts: [ParsedArtifact]
         var isDraftingArtifact: Bool
+        /// A block looked like one of our artifacts but couldn't be parsed
+        /// even after repair. The JSON stays hidden either way; this flag is
+        /// how the UI avoids presenting that as an empty reply.
+        var hadUnparseableArtifact = false
     }
 
     enum ParsedArtifact {
@@ -35,10 +39,15 @@ enum ArtifactParser {
         }
     }
 
-    static func process(_ raw: String, idPrefix: String) -> Result {
+    /// `final` marks the end of the stream: an unterminated artifact block is
+    /// "drafting" while tokens are still coming, but once the reply is over it
+    /// gets one repair attempt (the model hit its token ceiling or lost the
+    /// closing fence) and is flagged if that fails — never silently dropped.
+    static func process(_ raw: String, idPrefix: String, final: Bool = false) -> Result {
         var visible = ""
         var artifacts: [ParsedArtifact] = []
         var drafting = false
+        var unparseable = false
 
         var rest = Substring(raw)
         while let fenceStart = rest.range(of: "```") {
@@ -49,7 +58,16 @@ enum ArtifactParser {
                 // too short to tell), hide it and flag drafting; otherwise it's
                 // ordinary code — show it raw.
                 let body = String(afterFence)
-                if isLikelyArtifactBlock(body) || body.count < 24 {
+                if final, isLikelyArtifactBlock(body) {
+                    // The stream ended inside the block — repair it or say so.
+                    if let artifact = parseArtifact(body, idPrefix: idPrefix, index: artifacts.count) {
+                        artifacts.append(artifact)
+                    } else if let salvaged = salvageText(body) {
+                        visible += salvaged
+                    } else {
+                        unparseable = true
+                    }
+                } else if !final, isLikelyArtifactBlock(body) || body.count < 24 {
                     drafting = true
                 } else {
                     visible += "```" + body
@@ -65,8 +83,11 @@ enum ArtifactParser {
                     // The model wrapped a plain answer in an artifact block
                     // (e.g. {"type":"other","text":…}) — surface the text.
                     visible += salvaged
+                } else {
+                    // Tagged as artifact but unparseable — hide the JSON and
+                    // flag it, so the bubble can say so instead of sitting empty.
+                    unparseable = true
                 }
-                // Otherwise: tagged as artifact but unparseable — hide the JSON.
             } else {
                 visible += "```" + body + "```"
             }
@@ -77,19 +98,21 @@ enum ArtifactParser {
         // Small models sometimes skip the fence entirely and emit the JSON
         // inline. Detect a bare {"type":"<ours>"…} object in the visible text.
         (visible, drafting) = extractBareJSON(
-            from: visible, into: &artifacts, idPrefix: idPrefix, drafting: drafting)
+            from: visible, into: &artifacts, idPrefix: idPrefix,
+            drafting: drafting, final: final, unparseable: &unparseable)
 
         return Result(
             visibleText: visible.trimmingCharacters(in: .whitespacesAndNewlines),
             artifacts: artifacts,
-            isDraftingArtifact: drafting)
+            isDraftingArtifact: drafting,
+            hadUnparseableArtifact: unparseable)
     }
 
     /// Finds an unfenced artifact JSON object, parses it, and removes it from
     /// the visible text. Returns the cleaned text and updated drafting flag.
     private static func extractBareJSON(
         from text: String, into artifacts: inout [ParsedArtifact],
-        idPrefix: String, drafting: Bool
+        idPrefix: String, drafting: Bool, final: Bool, unparseable: inout Bool
     ) -> (String, Bool) {
         guard let typeRange = text.range(of: #"\{\s*"type"\s*:\s*"(rubric|activity|pog|quiz|email)""#,
                                          options: .regularExpression) else {
@@ -122,11 +145,23 @@ enum ArtifactParser {
             let body = String(tail[...end])
             if let artifact = parseArtifact(body, idPrefix: idPrefix, index: artifacts.count) {
                 artifacts.append(artifact)
+            } else {
+                unparseable = true
             }
             cleaned += String(tail[tail.index(after: end)...])
             return (cleaned, drafting)
         }
-        // Object still streaming — hide it and show the drafting card.
+        // Object never closed. Mid-stream that means still drafting; at the
+        // end of the stream it gets the same repair-or-flag treatment as an
+        // unterminated fenced block.
+        if final {
+            if let artifact = parseArtifact(tail, idPrefix: idPrefix, index: artifacts.count) {
+                artifacts.append(artifact)
+            } else {
+                unparseable = true
+            }
+            return (cleaned, drafting)
+        }
         return (cleaned, true)
     }
 

@@ -220,6 +220,9 @@ struct ChatView: View {
                 if msg.isDraftingArtifact {
                     draftingArtifactCard
                 }
+                if msg.artifactParseFailed == true {
+                    parseFailedNote
+                }
                 if let source = msg.source {
                     HStack(spacing: 6) {
                         Circle().fill(t.green).frame(width: 5, height: 5)
@@ -249,6 +252,31 @@ struct ChatView: View {
             Spacer(minLength: 8)
         }
         .padding(.vertical, 12)
+        .padding(.horizontal, 14)
+        .frame(maxWidth: 420)
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(t.card))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(t.border))
+    }
+
+    /// Shown when the reply was an artifact-shaped block the parser couldn't
+    /// read even after repair — an honest note instead of an empty bubble.
+    private var parseFailedNote: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(t.sub)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("This reply didn't form a valid card")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(t.text)
+                Text("The model's draft came out malformed. Regenerate to try again — smaller models occasionally do this.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(t.sub)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 8)
+        }
+        .padding(.vertical, 10)
         .padding(.horizontal, 14)
         .frame(maxWidth: 420)
         .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(t.card))

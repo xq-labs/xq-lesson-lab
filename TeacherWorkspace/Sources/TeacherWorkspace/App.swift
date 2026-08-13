@@ -18,9 +18,11 @@ struct LessonLabApp: App {
         // Parser test: TW_PARSE_FILE=<path> runs ArtifactParser on the file
         // contents and prints the outcome.
         if let file = env["TW_PARSE_FILE"], let raw = try? String(contentsOfFile: file, encoding: .utf8) {
-            let result = ArtifactParser.process(raw, idPrefix: "test")
+            // A file is a complete reply, so parse it as the end of a stream.
+            let result = ArtifactParser.process(raw, idPrefix: "test", final: true)
             print("visible: \(result.visibleText.prefix(120))")
             print("drafting: \(result.isDraftingArtifact)")
+            print("unparseable: \(result.hadUnparseableArtifact)")
             for a in result.artifacts { print("artifact: \(a.ref)") }
             exit(0)
         }

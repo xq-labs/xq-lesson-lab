@@ -120,11 +120,17 @@ struct Message: Identifiable, Codable {
     /// True while an artifact block is still streaming in for this message.
     /// Transient — not persisted (excluded from CodingKeys).
     var isDraftingArtifact = false
+    /// The reply contained an artifact-shaped block that couldn't be parsed
+    /// even after repair — the bubble explains instead of sitting empty.
+    /// Optional so it's omitted from stores when nil and old stores decode
+    /// without it.
+    var artifactParseFailed: Bool?
 
     enum Role: String, Codable { case user, assistant }
 
     enum CodingKeys: String, CodingKey {
         case id, role, text, artifact, source, attachmentNames, hiddenContext
+        case artifactParseFailed
     }
 
     /// Spelled out because the hand-written `init(from:)` below suppresses the
@@ -158,6 +164,7 @@ struct Message: Identifiable, Codable {
         attachmentNames = try c.decodeIfPresent([String].self, forKey: .attachmentNames)
         hiddenContext = try c.decodeIfPresent(String.self, forKey: .hiddenContext)
         artifact = try? c.decodeIfPresent(ArtifactRef.self, forKey: .artifact)
+        artifactParseFailed = try? c.decodeIfPresent(Bool.self, forKey: .artifactParseFailed)
     }
 }
 

@@ -894,7 +894,7 @@ final class AppState: ObservableObject {
         guard var msgs = extraMessages[chatId], let last = msgs.indices.last,
               msgs[last].role == .assistant else { return }
 
-        let result = ArtifactParser.process(raw, idPrefix: idPrefix)
+        let result = ArtifactParser.process(raw, idPrefix: idPrefix, final: final)
         msgs[last].text = result.visibleText
         msgs[last].isDraftingArtifact = result.isDraftingArtifact && !final
         var firstRef: ArtifactRef?
@@ -906,7 +906,13 @@ final class AppState: ObservableObject {
             msgs[last].artifact = firstRef
             msgs[last].source = "Saved to your \(firstRef.type.libraryName) library"
         }
-        if final, msgs[last].text.isEmpty, msgs[last].artifact == nil {
+        if final, result.hadUnparseableArtifact, msgs[last].artifact == nil {
+            // The reply was an artifact-shaped block that didn't survive
+            // repair. Say so rather than presenting an empty bubble.
+            msgs[last].artifactParseFailed = true
+        }
+        if final, msgs[last].text.isEmpty, msgs[last].artifact == nil,
+           msgs[last].artifactParseFailed != true {
             msgs[last].text = "…"  // model produced nothing visible
         }
         extraMessages[chatId] = msgs

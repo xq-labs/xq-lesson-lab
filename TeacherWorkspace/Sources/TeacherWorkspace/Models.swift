@@ -126,6 +126,39 @@ struct Message: Identifiable, Codable {
     enum CodingKeys: String, CodingKey {
         case id, role, text, artifact, source, attachmentNames, hiddenContext
     }
+
+    /// Spelled out because the hand-written `init(from:)` below suppresses the
+    /// memberwise one Swift would otherwise synthesize.
+    init(id: UUID = UUID(), role: Role, text: String, artifact: ArtifactRef? = nil,
+         source: String? = nil, attachmentNames: [String]? = nil,
+         hiddenContext: String? = nil, isDraftingArtifact: Bool = false) {
+        self.id = id
+        self.role = role
+        self.text = text
+        self.artifact = artifact
+        self.source = source
+        self.attachmentNames = attachmentNames
+        self.hiddenContext = hiddenContext
+        self.isDraftingArtifact = isDraftingArtifact
+    }
+
+    /// Hand-written for one line of it: `artifact`.
+    ///
+    /// `ArtifactRef` carries an `ArtifactType`, which is a `String` enum, so a
+    /// ref to a type added in a later version throws — and because
+    /// `extraMessages` is non-Optional on `PersistedState`, that one throw
+    /// fails the whole document and `load()` hands the teacher an empty app.
+    /// Dropping the ref costs a clickable card; the message keeps its text.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        role = try c.decode(Role.self, forKey: .role)
+        text = try c.decode(String.self, forKey: .text)
+        source = try c.decodeIfPresent(String.self, forKey: .source)
+        attachmentNames = try c.decodeIfPresent([String].self, forKey: .attachmentNames)
+        hiddenContext = try c.decodeIfPresent(String.self, forKey: .hiddenContext)
+        artifact = try? c.decodeIfPresent(ArtifactRef.self, forKey: .artifact)
+    }
 }
 
 // MARK: - Classroom (the teacher's real setup; drives the system prompt)

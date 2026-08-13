@@ -53,6 +53,18 @@ struct ContentView: View {
         .foregroundStyle(t.text)
         .font(.system(size: 14))
         .ignoresSafeArea()
+        // The consent sheet. Nothing about a second opinion happens without
+        // this being on screen first.
+        .sheet(item: $state.frontierSheet) { mode in
+            FrontierReviewSheet(runner: state.frontierRunner, mode: mode,
+                                dismiss: { state.frontierSheet = nil })
+                .environmentObject(state)
+        }
+        .onReceive(state.frontierRunner.$result.compactMap { $0 }) { review in
+            state.store(review: review)
+            state.frontierSheet = nil
+            state.openPreview(review.subjectRef)
+        }
         // Clicking anywhere outside the settings/schedule popovers dismisses
         // them; an in-progress rename commits with what was typed.
         .onTapGesture {

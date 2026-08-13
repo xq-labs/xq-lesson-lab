@@ -42,10 +42,19 @@ struct PreviewPanel: View {
                     .padding(.top, 14)
                     .padding(.horizontal, 20)
                     ScrollView {
-                        docContent(ref)
-                            .padding(.vertical, 16)
-                            .padding(.horizontal, 20)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                        VStack(alignment: .leading, spacing: 16) {
+                            // Above the document, so the critique is read in
+                            // relation to the thing it's about.
+                            if let review = state.latestReview(for: ref) {
+                                ReviewCard(review: review,
+                                           editStep: { _ in editing = true },
+                                           onDelete: { state.deleteReview(review.id) })
+                            }
+                            docContent(ref)
+                        }
+                        .padding(.vertical, 16)
+                        .padding(.horizontal, 20)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .id(ref.id)  // fresh scroll position per tab
                 } else {
@@ -288,6 +297,16 @@ struct PreviewPanel: View {
                     }
                     panelButton("trash", help: "Delete from library") {
                         confirmDelete = true
+                    }
+                }
+                // Only a teacher's own document, and only once a key exists —
+                // with no key the button is absent, not disabled. The demo
+                // classroom's samples can therefore never trigger a request.
+                if state.frontierEnabled, state.isUserArtifact(ref) {
+                    panelButton("cloud",
+                                help: "Second opinion — send this to Claude over the "
+                                    + "internet. You'll see exactly what gets sent first.") {
+                        state.startReview(of: ref)
                     }
                 }
                 panelButton("doc.on.doc", help: copied ? "Copied!" : "Copy as Markdown") {

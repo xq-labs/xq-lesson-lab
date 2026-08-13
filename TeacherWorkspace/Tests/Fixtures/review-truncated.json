@@ -1,0 +1,4 @@
+{"id":"msg_03","type":"message","role":"assistant","model":"claude-opus-5",
+ "stop_reason":"max_tokens","stop_details":null,
+ "content":[{"type":"text","text":"{\"strengths\":[\"The tiering is driven by exit-tick"}],
+ "usage":{"input_tokens":520,"output_tokens":8000}}

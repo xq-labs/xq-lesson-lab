@@ -469,7 +469,7 @@ struct SettingsPopover: View {
                     .font(.system(size: 11))
                     .foregroundStyle(t.green)
                     .padding(.top, 1)
-                Text("Private by design — the AI model runs entirely on this Mac. Chats, rosters, and student notes never leave it.")
+                Text(PrivacyCopy.settingsPromise(frontierEnabled: state.frontierEnabled))
                     .font(.system(size: 11))
                     .foregroundStyle(t.sub)
                     .fixedSize(horizontal: false, vertical: true)
@@ -497,6 +497,41 @@ struct SettingsPopover: View {
                     Text("Models")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(t.text)
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(t.dim)
+                }
+                .padding(.vertical, 7)
+                .padding(.horizontal, 8)
+                .contentShape(RoundedRectangle(cornerRadius: 8))
+            }
+            .buttonStyle(.plain)
+            .hoverHighlight(radius: 8, hover: t.hover)
+            .padding(.horizontal, -4)
+            // Second opinions is the only network feature in the app, so it
+            // sits here beside Models rather than advertising itself anywhere
+            // in the main UI. The sub-label is the whole state of the promise
+            // at a glance.
+            Button {
+                state.settingsOpen = false
+                state.frontierSheet = state.frontierEnabled ? .settings : .needsKey(nil)
+            } label: {
+                HStack(spacing: 9) {
+                    Image(systemName: "cloud")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(t.sub)
+                        .frame(width: 16)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Second opinions")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(t.text)
+                        Text(state.frontierEnabled
+                             ? "On · your Anthropic key · \(FrontierAuditLog.sendCount) sent"
+                             : "Off")
+                            .font(.system(size: 10.5))
+                            .foregroundStyle(t.dim)
+                    }
                     Spacer(minLength: 0)
                     Image(systemName: "chevron.right")
                         .font(.system(size: 10, weight: .semibold))

@@ -3,7 +3,10 @@
 Goal: turn the XQ Lesson Lab macOS app into a usable product for US teachers.
 The app is a native SwiftUI app with an **embedded on-device model** (llama.cpp +
 Qwen3.5-2B GGUF, fully offline). Key product angle: **FERPA-friendly — student
-data never leaves the teacher's Mac.**
+data never leaves the teacher's Mac.** The one network path for content is an
+explicit, opt-in "second opinion" on a single document, gated by a deterministic
+redaction check and a payload preview the teacher reads before it sends; student
+work in Skill Check has no path to it at all.
 
 ## Current state (done)
 
@@ -174,8 +177,26 @@ data never leaves the teacher's Mac.**
       Mac has warn but stay downloadable; `usesThinkPrefill` keeps the Qwen-only
       `<think>` prefill off other families. Probes: `TW_MODEL_SWITCH_TEST`,
       `TW_MODEL_DELETE_TEST`, `TW_MODEL_ID`
-- [ ] Optional BYO-API-key cloud backend via the existing `ChatBackend` protocol
-      (local stays default)
+- [x] **Second opinions** — explicit, opt-in off-device review of one document
+      at a time. Deliberately *not* a `ChatBackend` swap: `systemPrompt` writes
+      every student name and note into turn 0, so a chat-wide cloud toggle would
+      ship the roster on the next keystroke. Instead a narrower type,
+      `ReviewPayload`, whose only initializer runs `RedactionGate` — a payload
+      that would leak a known name cannot be constructed, and the gate runs
+      again on the serialized request bytes to catch an edit made in the consent
+      sheet. `PIILexicon` is built from the roster, so the check is an exact
+      token list rather than a guess. The local model's only job is turning
+      per-student notes into anonymous counts by returning an index into a fixed
+      enum (`ClassProfile.NeedCategory`) — a name isn't representable in that
+      answer, the same trick `WorkDocument` uses for quotations. BYO Anthropic
+      key in the Keychain (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`, so it
+      never syncs to iCloud); `FrontierProvider` keeps consent, redaction, and
+      audit above the transport so an XQ-hosted proxy is a later drop-in. Every
+      send — and every block — is appended to `frontier-audit.jsonl`, beside
+      `store.json` but never inside it. Probes: `TW_REDACT_ADVERSARIAL`,
+      `TW_REVIEW_PAYLOAD`, `TW_REVIEW_BODY`, `TW_REVIEW_PARSE`,
+      `TW_REVIEW_ERRORS`, `TW_REVIEW_LIVE`, `TW_AUDIT_DUMP`, plus
+      `scripts/check-no-pii-leaves.sh`.
 - [~] Distribution (July 31): ship-small builds (~15 MB) with first-launch
       model download (resumable, SHA-256 verified — `ModelDownload.swift`,
       `TW_MODEL_DL_TEST` probe); with no model at all the download is a
@@ -198,7 +219,13 @@ data never leaves the teacher's Mac.**
 
 ## Architecture notes for future sessions
 
-- `ChatBackend` protocol isolates the model; `LlamaBackend.shared` is the llama.cpp impl. Add cloud/Apple-Intelligence backends here.
+- `ChatBackend` protocol isolates the model; `LlamaBackend.shared` is the llama.cpp impl.
+  Apple-Intelligence or another *local* backend belongs here. A **cloud** backend does
+  not: `AppState.backend` is deliberately `let`, because `buildTurns` prepends
+  `systemPrompt`, which interpolates every student name and note. Off-device work goes
+  through `FrontierProvider`, which takes a `ReviewPayload` — a type whose only
+  initializer runs the redaction gate — rather than `[ChatTurn]`, which is an array of
+  unconstrained `String` and can therefore promise nothing about its contents.
 - System prompt built in `AppState.systemPrompt(...)` — Phase 1.2 moves its data source from `SampleData` to the persisted Classroom model.
 - Artifact contract: one fenced ```artifact JSON block per reply; schemas documented in the system prompt; parser tolerates truncated/over-closed JSON and ```json fences.
 - Release builds exposed a llama.cpp pointer-lifetime bug once (dangling `llama_batch_get_one` pointer); keep pointer scopes tight in `LlamaBackend` and always smoke-test release bundles (`TW_PROBE`).

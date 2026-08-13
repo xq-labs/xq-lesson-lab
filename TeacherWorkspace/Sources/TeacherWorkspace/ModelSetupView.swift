@@ -20,7 +20,7 @@ struct ModelGateView: View {
                 .padding(.bottom, 18)
             Text("Welcome to \(AppInfo.productName)")
                 .font(.system(size: 24, weight: .bold))
-            Text("One quick download and your assistant runs privately on this Mac —\nchats, rosters, and student notes never leave it.")
+            Text("One quick download and your assistant runs privately on this Mac —\nchats, rosters, and student notes stay here.")
                 .font(.system(size: 13.5))
                 .foregroundStyle(t.sub)
                 .multilineTextAlignment(.center)
@@ -100,7 +100,7 @@ struct ModelSetupCard: View {
         let spec = downloader.spec
         switch downloader.phase {
         case .idle:
-            return "\(spec.displayName) (\(ModelPhaseCopy.fmt(spec.byteSize))) runs privately on this Mac — nothing you type ever leaves it."
+            return "\(spec.displayName) (\(ModelPhaseCopy.fmt(spec.byteSize))) runs privately on this Mac."
         case .installed:
             return "You're all set — the assistant is ready."
         default:

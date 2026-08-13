@@ -8,8 +8,8 @@ enum AppInfo {
 
     /// Marketing version + build number. make-app.sh reads these into the
     /// Info.plist, and the appcast must match — bump both here per release.
-    static let version = "1.0.3"
-    static let build = 4
+    static let version = "1.0.4"
+    static let build = 5
 
     /// Bundle assembled by make-app.sh; kept in sync with it by hand.
     static let appBundleName = "\(productName).app"
@@ -41,4 +41,11 @@ enum AppInfo {
     static let allowlistDomains = ["github.com", "objects.githubusercontent.com",
                                    "huggingface.co", "cdn.hf.co", "cdn-lfs.hf.co",
                                    URL(string: websiteURL)?.host ?? "xq-lesson-lab.vercel.app"]
+
+    /// Deliberately separate from `allowlistDomains`. That list is what the
+    /// app needs to download a model and check for updates, and it is quoted
+    /// to school IT as such — folding a third-party AI API into it would imply
+    /// the app phones home. This one is shown only once a teacher has turned
+    /// second opinions on, and only where they can see why.
+    static let frontierDomains = ["api.anthropic.com"]
 }

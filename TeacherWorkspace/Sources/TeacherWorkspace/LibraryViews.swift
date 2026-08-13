@@ -157,7 +157,7 @@ struct IntegrationsView: View {
                     .font(.system(size: 20, weight: .bold))
                     .kerning(-0.2)
                 Text(tab == .plugins
-                     ? "Integrations that give the assistant context. On-device first — nothing leaves this Mac."
+                     ? "Integrations that give the assistant context. On-device first — nothing is sent anywhere without you asking."
                      : "Extend the assistant with task-specific skills. Install the ones that fit your teaching.")
                     .foregroundStyle(t.sub)
                     .padding(.top, 4)

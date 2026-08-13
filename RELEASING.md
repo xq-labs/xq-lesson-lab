@@ -67,10 +67,22 @@ different Mac means importing it there (`generate_keys -f file`).
    swift build
    TW_FRAMEWORK_CHECK=1 .build/debug/TeacherWorkspace     # 5/13/37/115, no orphans
    TW_STORE=<a store.json from the previous version> TW_STORE_CHECK=1 .build/debug/TeacherWorkspace
+   scripts/check-no-pii-leaves.sh                        # nothing identifying can leave
+   TW_REVIEW_ERRORS=1 .build/debug/TeacherWorkspace      # every failure has a next step
+   TW_KEYCHAIN_TEST=1 .build/debug/TeacherWorkspace      # the key can actually be saved
    ```
-   The second one matters whenever `PersistedState` changed: a field added
+   The store check matters whenever `PersistedState` changed: a field added
    without `?` makes the whole document fail to decode, and `load()` swallows
    that and hands the teacher an empty app.
+
+   `check-no-pii-leaves.sh` is the one that backs the privacy claim. It runs
+   the adversarial redaction corpus, then builds the real outgoing payload for
+   every reviewable artifact and greps the bytes for every roster name, the
+   teacher's name, and the school. It needs no network and no API key — the
+   payload builder is deterministic on purpose, which is the only reason the
+   check can exist. **Do not ship a release where it fails**, and re-run it
+   after any edit to `PIILexicon`, `Deidentifier`, `RedactionGate`,
+   `ReviewPayload`, or `ArtifactExport.markdown`.
 1. Bump `AppInfo.version` (marketing) and `AppInfo.build` (monotonic integer —
    Sparkle compares this one).
 2. ```bash
@@ -107,6 +119,36 @@ different Mac means importing it there (`generate_keys -f file`).
    repo and every URL in the appcast 404s. Push the code to both remotes.
 6. Sanity check: install the **previous** DMG, open it, and confirm
    "Check for Updates…" (app menu) offers the new version.
+
+## The Keychain and code signing
+
+Second opinions store the teacher's API key in the Keychain, and Keychain ACLs
+bind to the **code-signing identity**. An ad-hoc-signed local build
+(`make-app.sh` signs with `--force --sign -`) and a Developer ID release build
+are different principals to the system, so expect:
+
+- A "wants to use your confidential information" prompt on a dev build even
+  after a release build already has access, and vice versa.
+- A key added in a dev build not being visible to the release build.
+
+This is macOS working correctly — don't try to defeat it with a shared access
+group or a looser accessibility class. `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`
+is deliberate: a key that synced to iCloud Keychain would quietly undercut the
+"stays on this Mac" promise the rest of the app makes.
+
+**Do not add `kSecUseDataProtectionKeychain: true`.** It reads like the modern
+default and it breaks every save with `errSecMissingEntitlement` (-34018,
+surfaced to the teacher as "A required entitlement isn't present"), because the
+data-protection keychain needs a `keychain-access-groups` entitlement and this
+app is not sandboxed and ships no entitlements file. The file-based keychain is
+correct for a non-sandboxed Mac app, and file-based items never sync to iCloud
+unless they ask to with `kSecAttrSynchronizable` — which nothing here does.
+`TW_KEYCHAIN_TEST=1` catches this in one command; it only ever showed up by
+clicking through the setup sheet before.
+
+For end-to-end testing without touching the real Keychain, every probe honours
+`TW_CLAUDE_KEY`, and `TW_FRONTIER_URL` points the transport at a local echo
+server.
 
 ## Adding a model
 

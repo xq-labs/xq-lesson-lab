@@ -1,0 +1,11 @@
+Why the Creek Fish Died: An Argument From the Data
+
+My claim is that the fish kill in Miller Creek in August was caused by low dissolved oxygen following the fertilizer runoff from the fields upstream, and not by the heat wave on its own.
+
+The strongest evidence is the timing and the location together. Our class measured dissolved oxygen at four points along the creek every Friday from June through September. The two sites downstream of the field drain dropped from 7.9 mg/L to 3.1 mg/L in the ten days after the August 3rd rainfall, while the two sites upstream of the drain never fell below 6.8 mg/L. If temperature alone were responsible, all four sites should have dropped together, because the water temperature we recorded at all four sites was within 0.4 degrees of each other on every sampling day.
+
+The nitrate readings support the same causal chain. Nitrate at the downstream sites rose from 2 mg/L to 11 mg/L over the same ten days, which matches the pattern of a fertilizer pulse feeding an algae bloom. We also saw the algae directly: the downstream sites were visibly green by August 10th, and the decomposing mats are what consume the oxygen at night.
+
+I want to be fair to the heat explanation, because the heat wave was real and warm water does hold less oxygen. But the size of that effect is too small to account for what we measured. At the temperatures we recorded, the drop in oxygen saturation from heat alone would be under 1 mg/L, and we observed a drop of nearly 5 mg/L. Heat can explain part of the decline. It cannot explain why the decline happened only below the drain.
+
+The other alternative I considered is that a sewage line leaked. I looked at the city's maintenance records and there was no reported break that month, and a sewage source would also have raised the bacterial counts, which the county's testing showed stayed flat. So I am confident the runoff is the better explanation, though I would want a second summer of data before saying it is settled.

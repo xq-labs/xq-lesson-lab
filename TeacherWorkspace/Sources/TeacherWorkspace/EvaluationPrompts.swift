@@ -39,22 +39,17 @@ enum EvaluationPrompts {
         return out
     }
 
-    /// Is there anything here to judge at all? Keeps a lab report off an arts
-    /// progression before any level gets assigned to it.
-    static func relevance(work: WorkDocument, skill: ComponentSkill) -> String {
-        """
-        STUDENT WORK (numbered sentences):
-        \(work.numbered)
-
-        SKILL: \(skill.competencyName) — \(skill.name)
-        WHAT IT MEANS: \(skill.detail)
-
-        Could this piece of student work be judged against this skill at all?
-        Answer NO if the work is about a different subject, or if it never \
-        touches what this skill is about.
-        Answer with one word: YES or NO.
-        """
-    }
+    // There is no relevance prompt any more. Asking "is this work about this
+    // skill?" up front answered NO even for work squarely on the skill, which
+    // put a warning on correct placements; rewording it didn't help. The caveat
+    // now comes from the ladder itself — no rung answering YES is what "not
+    // about this skill" actually looks like. See `SkillPlacement.isOffTopic`.
+    //
+    // Judging the cited sentence in isolation was tried too, as a way to catch
+    // thin citations, and was worse: stripped of context the model rejected
+    // sound evidence and collapsed good work to the floor. That check is now
+    // `EvaluationPipeline.carriesWeight`, which counts content words and calls
+    // nothing.
 
     /// One rung, one question. The model never sees the four descriptors
     /// together — choosing among them at once is what produced the unstable
@@ -67,11 +62,9 @@ enum EvaluationPrompts {
         SKILL: \(skill.competencyName) — \(skill.name)
         STATEMENT: \(thirdPerson(rung.descriptor))
 
-        Answer true only if one specific sentence of the student work above \
-        clearly shows the student doing what the STATEMENT describes. If the \
-        work is about a different subject, or only brushes past it, answer false.
+        Does the student work show the student doing what the STATEMENT describes?
         Answer only this JSON:
-        {"meets": true or false, "sentence": <the number of the ONE sentence that shows it, or 0>}
+        {"meets": true or false, "sentence": <the number of the sentence that best shows it, or 0>}
         """
     }
 

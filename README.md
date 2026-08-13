@@ -1,7 +1,10 @@
 # Lesson Lab
 
 A macOS app for teachers: an AI planning assistant that runs **entirely on-device**
-(llama.cpp + Qwen GGUF). Chats, rosters, and student notes never leave the Mac.
+(llama.cpp + Qwen GGUF). Chats, rosters, and student notes never leave the Mac —
+except through one explicit, opt-in action: a **second opinion**, which de-identifies
+one document on-device, shows you the exact bytes, and asks before sending. Every send
+is logged locally, in full. Student work in Skill Check is never sent, at all.
 
 - App code: [`TeacherWorkspace/`](TeacherWorkspace/) (Swift Package Manager, SwiftUI)
 - Product roadmap: [`TeacherWorkspace/ROADMAP.md`](TeacherWorkspace/ROADMAP.md)

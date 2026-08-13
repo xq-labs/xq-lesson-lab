@@ -14,7 +14,7 @@ struct ModelsView: View {
     var body: some View {
         LibraryPage(
             title: "Models",
-            subtitle: "The assistant runs on one of these, entirely on this Mac. Chats, rosters, and student notes never leave it."
+            subtitle: "The assistant runs on one of these, entirely on this Mac. Chats, rosters, and student notes stay here."
         ) {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), spacing: 14)], spacing: 14) {
                 ForEach(ModelCatalog.all) { spec in

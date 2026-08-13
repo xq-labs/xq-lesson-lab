@@ -1,0 +1,4 @@
+{"id":"msg_04","type":"message","role":"assistant","model":"claude-opus-5",
+ "stop_reason":"end_turn","stop_details":null,
+ "content":[{"type":"thinking","thinking":""}],
+ "usage":{"input_tokens":520,"output_tokens":4}}

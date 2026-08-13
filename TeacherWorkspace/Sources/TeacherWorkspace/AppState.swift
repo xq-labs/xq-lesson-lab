@@ -104,11 +104,74 @@ final class AppState: ObservableObject {
     /// without touching its folder, so unarchiving puts it back where it was.
     @Published var archivedChats: Set<String> = []
 
+    // MARK: - Second opinions (off-device review)
+
+    /// Saved reviews, keyed to the artifact they're about.
+    @Published var frontierReviews: [FrontierReview] = []
+    /// True once the full consent explainer has been read. The payload
+    /// preview is *always* shown; this only collapses the three paragraphs
+    /// above it to one line. Same shape as `hasSeenOnboarding`.
+    var hasSeenFrontierConsent = false
+    /// Which sheet is up, if any.
+    @Published var frontierSheet: FrontierReviewSheet.Mode?
+    /// Mirrors "a key exists". Nothing about the feature appears without one —
+    /// the button is absent, not disabled.
+    @Published var frontierEnabled = AnthropicDirectProvider().isConfigured
+
+    let frontierRunner = FrontierReviewRunner()
+
+    func reviews(for ref: ArtifactRef) -> [FrontierReview] {
+        frontierReviews
+            .filter { $0.subjectRef == ref }
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+
+    func latestReview(for ref: ArtifactRef) -> FrontierReview? { reviews(for: ref).first }
+
+    func store(review: FrontierReview) {
+        frontierReviews.removeAll { $0.id == review.id }
+        frontierReviews.append(review)
+    }
+
+    /// The receipt in `payloadSent` is itself data a teacher may want gone.
+    func deleteReview(_ id: String) {
+        frontierReviews.removeAll { $0.id == id }
+    }
+
+    /// Opens the right sheet for this document: setup if there's no key yet,
+    /// the consent preview if there is.
+    func startReview(of ref: ArtifactRef) {
+        frontierRunner.reset()
+        frontierSheet = frontierEnabled ? .confirm(ref) : .needsKey(ref)
+    }
+
+    /// Which reviews have been read, so a card opens expanded the first time
+    /// and collapsed after. View state, so UserDefaults rather than the JSON
+    /// store — the same call `SidebarCollapseState` makes.
+    private static let seenReviewsKey = "frontier.seenReviews"
+
+    func hasSeenReview(_ id: String) -> Bool {
+        (UserDefaults.standard.stringArray(forKey: Self.seenReviewsKey) ?? []).contains(id)
+    }
+
+    func markReviewSeen(_ id: String) {
+        var seen = UserDefaults.standard.stringArray(forKey: Self.seenReviewsKey) ?? []
+        guard !seen.contains(id) else { return }
+        seen.append(id)
+        UserDefaults.standard.set(seen, forKey: Self.seenReviewsKey)
+    }
+
     private var generationTask: Task<Void, Never>?
     private var lastScrollBump = Date.distantPast
     private var saveCancellable: AnyCancellable?
     private var terminateObserver: NSObjectProtocol?
 
+    /// Stays `let`, stays local, and is never swapped for a cloud backend.
+    /// `systemPrompt(chatContext:)` writes every student name and note into
+    /// turn 0 of every message — a "use cloud for chat" toggle would ship the
+    /// whole roster on the next keystroke. Off-device review goes through
+    /// `FrontierProvider` instead, which takes a `ReviewPayload` that cannot
+    /// be constructed without passing the redaction gate.
     let backend: ChatBackend = LlamaBackend.shared
     var modelAvailable: Bool { LlamaBackend.locateModelFile() != nil }
     /// First run with no model at all: the app is unusable, so setup blocks
@@ -145,6 +208,9 @@ final class AppState: ObservableObject {
             hasSeenOnboarding = saved.hasSeenOnboarding ?? false
             skillEvaluations = saved.skillEvaluations ?? []
             recentSkillIds = saved.recentSkillIds ?? []
+            // Entries this build can't read are dropped, not fatal — see `Failable`.
+            frontierReviews = saved.frontierReviews?.compactMap(\.value) ?? []
+            hasSeenFrontierConsent = saved.hasSeenFrontierConsent ?? false
             // Demo default chat only makes sense while the demo data shows.
             if !classroom.isDemo, activeChat == "c1" { activeChat = nil }
         }
@@ -192,7 +258,9 @@ final class AppState: ObservableObject {
             sidebarWidth: Double(sidebarWidth),
             hasSeenOnboarding: hasSeenOnboarding,
             skillEvaluations: skillEvaluations,
-            recentSkillIds: recentSkillIds))
+            recentSkillIds: recentSkillIds,
+            frontierReviews: frontierReviews.map(Failable.init),
+            hasSeenFrontierConsent: hasSeenFrontierConsent))
     }
 
     // MARK: - Folders
@@ -425,6 +493,23 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// Every artifact a frontier review could be asked for, newest libraries
+    /// first. Skill Check placements are deliberately absent and have no path
+    /// here — student work does not leave this Mac.
+    var allReviewableRefs: [ArtifactRef] {
+        allActivities.map { ArtifactRef(type: .activity, id: $0.id) }
+            + allRubrics.map { ArtifactRef(type: .rubric, id: $0.id) }
+            + allQuizzes.map { ArtifactRef(type: .quiz, id: $0.id) }
+            + allPogs.map { ArtifactRef(type: .pog, id: $0.id) }
+            + allEmails.map { ArtifactRef(type: .email, id: $0.id) }
+    }
+
+    /// Artifact ids are unique across libraries in practice; this resolves one
+    /// back to its ref for the probes and for `@mention`-style lookups.
+    func findArtifactRef(id: String) -> ArtifactRef? {
+        allReviewableRefs.first { $0.id == id }
+    }
+
     func deleteArtifact(_ ref: ArtifactRef) {
         switch ref.type {
         case .rubric: userRubrics.removeAll { $0.id == ref.id }
@@ -435,6 +520,9 @@ final class AppState: ObservableObject {
         case .quiz: userQuizzes.removeAll { $0.id == ref.id }
         case .email: userEmails.removeAll { $0.id == ref.id }
         }
+        // A review of a document that no longer exists is just a stored copy
+        // of text the teacher deleted — take it with them.
+        frontierReviews.removeAll { $0.subjectRef == ref }
         closeTab(ref)
     }
 

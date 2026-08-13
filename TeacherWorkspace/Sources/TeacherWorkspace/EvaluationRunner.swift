@@ -103,7 +103,7 @@ final class EvaluationRunner: ObservableObject {
             evidence: placement.evidenceSentences.compactMap { work.sentence($0) },
             nextStep: placement.nextStep,
             hasMixedEvidence: placement.hasMixedEvidence,
-            isOffTopic: !placement.isRelevant,
+            isOffTopic: placement.isOffTopic,
             teacherLevel: nil)
     }
 }

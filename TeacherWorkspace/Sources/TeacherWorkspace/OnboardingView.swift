@@ -168,11 +168,11 @@ private struct OnboardingPage {
         OnboardingPage(
             icon: "graduationcap",
             title: "Welcome to \(AppInfo.productName)",
-            blurb: "An AI planning assistant made for teachers — and it never leaves your Mac.",
+            blurb: "An AI planning assistant made for teachers — your work stays on your Mac.",
             features: [
                 Feature(icon: "lock.shield",
                         title: "Private by design",
-                        detail: "The AI model runs entirely on this Mac. Chats, rosters, and student notes are never sent anywhere."),
+                        detail: "The AI model runs entirely on this Mac. Chats, rosters, and student notes stay here — nothing is sent anywhere unless you ask for a second opinion and approve exactly what goes."),
                 Feature(icon: "wifi.slash",
                         title: "Works offline",
                         detail: "No account, no cloud, no internet required — plan from anywhere."),

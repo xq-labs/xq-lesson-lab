@@ -71,8 +71,15 @@ struct GenerationOptions {
 }
 
 /// A chat model that can stream a reply for a conversation. Implementations:
-/// LlamaBackend (embedded llama.cpp + Qwen3.5). Cloud backends (Claude API)
-/// or Apple's on-device model can be dropped in later.
+/// LlamaBackend (embedded llama.cpp + Qwen3.5). Apple's on-device model, or
+/// any other *local* engine, can be dropped in here.
+///
+/// A **cloud** backend must not. `turns` is `[ChatTurn]` — an array of
+/// unconstrained `String` — so no conformer can promise anything about what it
+/// carries, and `AppState.systemPrompt` puts every student name and note in
+/// turn 0. Off-device review goes through `FrontierProvider` instead, which
+/// takes a `ReviewPayload`: a narrower type whose only initializer runs the
+/// redaction gate, so a payload that would leak a known name cannot be built.
 protocol ChatBackend {
     func streamReply(turns: [ChatTurn], options: GenerationOptions) -> AsyncThrowingStream<String, Error>
 }

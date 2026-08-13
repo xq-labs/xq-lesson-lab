@@ -56,18 +56,57 @@ enum ArtifactExport {
         "Subject: \(email.title)\n\n\(email.body)\n"
     }
 
-    static func markdown(for ref: ArtifactRef, state: AppState) -> String? {
+    /// `includeReview` is off by default because this is also the payload
+    /// source for a frontier review — sending a model its own last critique
+    /// back would be circular, and would double the bytes leaving the Mac.
+    static func markdown(for ref: ArtifactRef, state: AppState,
+                         includeReview: Bool = false) -> String? {
+        let base: String?
         switch ref.type {
-        case .rubric: return state.rubric(id: ref.id).map(markdown(rubric:))
-        case .activity: return state.activity(id: ref.id).map(markdown(activity:))
-        case .pog: return state.pog(id: ref.id).map(markdown(pog:))
-        case .quiz: return state.quiz(id: ref.id).map(markdown(quiz:))
-        case .email: return state.email(id: ref.id).map(markdown(email:))
+        case .rubric: base = state.rubric(id: ref.id).map(markdown(rubric:))
+        case .activity: base = state.activity(id: ref.id).map(markdown(activity:))
+        case .pog: base = state.pog(id: ref.id).map(markdown(pog:))
+        case .quiz: base = state.quiz(id: ref.id).map(markdown(quiz:))
+        case .email: base = state.email(id: ref.id).map(markdown(email:))
         }
+        guard var md = base else { return nil }
+        if includeReview, let review = state.latestReview(for: ref) {
+            md += "\n" + markdown(review: review, classroom: state.classroom)
+        }
+        return md
+    }
+
+    /// The review as it appears under a copied document. Ends with the
+    /// provenance line, in the same voice as "A draft judgment, made on this
+    /// Mac." — where it ran, what it saw, and whose call it is.
+    static func markdown(review: FrontierReview, classroom: Classroom) -> String {
+        func shown(_ text: String) -> String { review.personalized(text, classroom: classroom) }
+
+        var md = "\n## Second opinion\n\n"
+        if !review.strengths.isEmpty {
+            md += "**Strengths**\n\n"
+            for line in review.strengths { md += "- \(shown(line))\n" }
+            md += "\n"
+        }
+        if !review.suggestions.isEmpty {
+            md += "**Suggestions**\n\n"
+            for (i, s) in review.suggestions.enumerated() {
+                let step = s.stepNumber.map { " _(step \($0))_" } ?? ""
+                md += "\(i + 1). **\(shown(s.title))**\(step)  \n   \(shown(s.detail))\n"
+            }
+            md += "\n"
+        }
+        if !review.questions.isEmpty {
+            md += "**Worth thinking about**\n\n"
+            for q in review.questions { md += "- \(shown(q))\n" }
+            md += "\n"
+        }
+        md += "_\(review.provenanceLine)_\n"
+        return md
     }
 
     static func copyMarkdown(for ref: ArtifactRef, state: AppState) {
-        guard let md = markdown(for: ref, state: state) else { return }
+        guard let md = markdown(for: ref, state: state, includeReview: true) else { return }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(md, forType: .string)
     }
@@ -226,14 +265,71 @@ struct PrintableArtifactView: View {
             case .email:
                 if let e = state.email(id: ref.id) { emailBody(e) }
             }
-            Text("Made with \(AppInfo.productName)")
+
+            if let review = state.latestReview(for: ref) {
+                printedReview(review)
+            }
+
+            // The document itself carries no provenance mark, because the
+            // document never left in modified form. The review does. A teacher
+            // who ignores the review and prints the plan has printed something
+            // that never went anywhere, and the paper shouldn't claim otherwise.
+            Text(state.latestReview(for: ref).map { review in
+                "Made with \(AppInfo.productName). The second opinion above came from "
+                    + "\(review.modelDisplayName) on \(review.dateLine) — the document text "
+                    + "was sent over the internet for that review. Rosters and student "
+                    + "notes were not."
+            } ?? "Made with \(AppInfo.productName)")
                 .font(.system(size: 9))
                 .foregroundStyle(Color(white: 0.6))
+                .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 10)
         }
         .padding(36)
         .frame(width: 612, alignment: .leading)
         .background(Color.white)
+    }
+
+    @ViewBuilder
+    private func printedReview(_ review: FrontierReview) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Rectangle().fill(Color(white: 0.85)).frame(height: 1)
+            Text("Second opinion — \(review.modelDisplayName), \(review.dateLine)")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(ink)
+
+            if !review.strengths.isEmpty {
+                Text("Strengths").font(.system(size: 10, weight: .semibold)).foregroundStyle(faint)
+                ForEach(review.strengths, id: \.self) { line in
+                    Text("• \(review.personalized(line, classroom: state.classroom))")
+                        .font(.system(size: 10.5)).foregroundStyle(ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            if !review.suggestions.isEmpty {
+                Text("Suggestions").font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(faint).padding(.top, 4)
+                ForEach(Array(review.suggestions.enumerated()), id: \.offset) { i, s in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(i + 1). \(review.personalized(s.title, classroom: state.classroom))")
+                            .font(.system(size: 10.5, weight: .semibold)).foregroundStyle(ink)
+                        Text(review.personalized(s.detail, classroom: state.classroom))
+                            .font(.system(size: 10.5)).foregroundStyle(faint)
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            if !review.questions.isEmpty {
+                Text("Worth thinking about").font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(faint).padding(.top, 4)
+                ForEach(review.questions, id: \.self) { q in
+                    Text("• \(review.personalized(q, classroom: state.classroom))")
+                        .font(.system(size: 10.5)).foregroundStyle(faint)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .padding(.top, 12)
     }
 
     private func header(_ title: String, _ subtitle: String) -> some View {

@@ -30,6 +30,11 @@ struct LessonLabApp: App {
         // to PersistedState makes the whole document fail to decode and takes
         // a teacher's chats and classroom with it, so every release that
         // touches that struct should run this against an older store.
+        // TW_STORE_FUTURE=1 asserts a store written by a *later* version still
+        // decodes — the mirror of TW_STORE_CHECK, which asserts an older one does.
+        if env["TW_STORE_FUTURE"] != nil {
+            PersistenceStore.runFutureCompatibilityCheck()
+        }
         if env["TW_STORE_CHECK"] != nil {
             guard let saved = PersistenceStore.load() else {
                 print("STORE: nothing decoded — a teacher on this build would lose everything")
@@ -44,6 +49,7 @@ struct LessonLabApp: App {
                   + "— \(saved.classroom.classes.count) classes, "
                   + "\(saved.classroom.classes.reduce(0) { $0 + $1.students.count }) students")
             print("skill checks: \(saved.skillEvaluations?.count ?? 0)")
+            print("second opinions: \(saved.frontierReviews?.compactMap(\.value).count ?? 0)")
             exit(0)
         }
 
@@ -104,6 +110,41 @@ struct LessonLabApp: App {
             exit(0)
         }
 
+        // De-identification probes. These gate the frontier-review feature and
+        // are deliberately the first thing in that whole subsystem to exist:
+        // nothing that can open a socket ships until the thing that stops bytes
+        // is proven. TW_REDACT_TEST="<text>" redacts one string;
+        // TW_REDACT_ADVERSARIAL=1 runs the regression corpus and exits non-zero
+        // on any leak.
+        if env["TW_REDACT_ADVERSARIAL"] != nil {
+            RedactionProbe.runAdversarial()
+        }
+        if let text = env["TW_REDACT_TEST"] {
+            RedactionProbe.runSingle(text)
+        }
+        // TW_REVIEW_PAYLOAD=<artifact id> prints the exact bytes a frontier
+        // review would send, with no network stack involved.
+        if let id = env["TW_REVIEW_PAYLOAD"] {
+            MainActor.assumeIsolated { RedactionProbe.runPayload(artifactId: id) }
+        }
+        // The rest of the frontier-review probes: TW_REVIEW_ERRORS=1 prints
+        // every failure message, TW_REVIEW_PARSE=<file> decodes a canned API
+        // response, TW_REVIEW_BODY=<artifact id> prints the request body
+        // without sending, TW_REVIEW_LIVE=<artifact id> actually sends (needs
+        // TW_CLAUDE_KEY), and TW_AUDIT_DUMP=1 prints the audit log.
+        // TW_KEYCHAIN_TEST=1 stores, reads back and deletes a throwaway secret
+        // — the same calls the setup sheet makes, without the clicking.
+        if env["TW_KEYCHAIN_TEST"] != nil { FrontierProbe.runKeychainTest() }
+        if env["TW_REVIEW_ERRORS"] != nil { FrontierProbe.runErrors() }
+        if let file = env["TW_REVIEW_PARSE"] { FrontierProbe.runParse(file: file) }
+        if let id = env["TW_REVIEW_BODY"] {
+            MainActor.assumeIsolated { FrontierProbe.runBody(artifactId: id) }
+        }
+        if let id = env["TW_REVIEW_LIVE"] {
+            MainActor.assumeIsolated { FrontierProbe.runLive(artifactId: id) }
+        }
+        if env["TW_AUDIT_DUMP"] != nil { FrontierProbe.runAuditDump() }
+
         // Roster parser test: TW_ROSTER_FILE=<path> prints parsed students.
         if let file = env["TW_ROSTER_FILE"], let raw = try? String(contentsOfFile: file, encoding: .utf8) {
             for s in RosterImport.parse(raw) {
@@ -120,6 +161,32 @@ struct LessonLabApp: App {
                     ArtifactExport.writePDF(for: ArtifactRef(type: .rubric, id: r.id), state: s,
                                             to: URL(fileURLWithPath: path))
                     print(ArtifactExport.markdown(rubric: r).prefix(200))
+                }
+            }
+            exit(0)
+        }
+
+        // Provenance-on-paper test: TW_EXPORT_REVIEW_PDF=<path> renders an
+        // artifact that *has* a second opinion, so the printed review section
+        // and the footer that says the text was sent are verifiable without
+        // clicking through the app.
+        if let path = env["TW_EXPORT_REVIEW_PDF"] {
+            MainActor.assumeIsolated {
+                let s = AppState()
+                let ref = ArtifactRef(type: .activity, id: "a1")
+                s.store(review: Self.sampleReview(ref: ref, state: s))
+                ArtifactExport.writePDF(for: ref, state: s, to: URL(fileURLWithPath: path))
+                guard let md = ArtifactExport.markdown(for: ref, state: s,
+                                                       includeReview: true) else {
+                    print("EXPORT: nothing rendered")
+                    exit(1)
+                }
+                print(md)
+                // The footer is the claim; if it isn't on the page, a teacher
+                // could print a reviewed plan that doesn't say it was reviewed.
+                guard md.contains("Reviewed off-device") else {
+                    print("EXPORT: provenance line missing from markdown")
+                    exit(1)
                 }
             }
             exit(0)
@@ -339,6 +406,30 @@ struct LessonLabApp: App {
             // TW_DRAFT fills the composer without sending — used to snapshot
             // how @mentions are tinted in the field.
             if let draft = env["TW_DRAFT"] { snapState.draft = draft }
+            // TW_REVIEW=nokey|sheet|settings|result snapshots the second-
+            // opinion surfaces. `result` seeds a finished review so the card
+            // renders without a key or a network call — the payload it shows
+            // is a real de-identified one from the demo classroom.
+            switch env["TW_REVIEW"] {
+            case "on":
+                // Configured but idle — for checking that the promise copy
+                // flips to the conditional wording and the panel button appears.
+                snapState.frontierEnabled = true
+            case "nokey":
+                snapState.frontierSheet = .needsKey(ArtifactRef(type: .activity, id: "a1"))
+            case "sheet":
+                snapState.frontierEnabled = true
+                snapState.startReview(of: ArtifactRef(type: .activity, id: "a1"))
+            case "settings":
+                snapState.frontierEnabled = true
+                snapState.frontierSheet = .settings
+            case "result":
+                let ref = ArtifactRef(type: .activity, id: "a1")
+                snapState.frontierEnabled = true
+                snapState.store(review: Self.sampleReview(ref: ref, state: snapState))
+                snapState.openPreview(ref)
+            default: break
+            }
             // TW_SETTINGS=1 opens the settings popover above the footer.
             if env["TW_SETTINGS"] != nil { snapState.settingsOpen = true }
             // TW_MODEL_PICKER=1 opens the model picker under the composer.
@@ -382,6 +473,51 @@ struct LessonLabApp: App {
                 Button("Restore Demo Data") { state.restoreDemoClassroom() }
             }
         }
+    }
+
+    /// A finished review for `TW_REVIEW=result`. The `payloadSent` field is a
+    /// real de-identified payload built from the demo classroom, so the
+    /// snapshot exercises the receipt disclosure rather than faking it.
+    @MainActor
+    private static func sampleReview(ref: ArtifactRef, state: AppState) -> FrontierReview {
+        let lexicon = PIILexicon.build(from: state.classroom)
+        let payload = (ArtifactExport.markdown(for: ref, state: state)).flatMap { markdown in
+            try? ReviewPayload(ref: ref, title: state.artifact(for: ref)?.title ?? "",
+                               markdown: markdown, lexicon: lexicon)
+        }
+        return FrontierReview(
+            id: "review-sample", createdAt: Date(),
+            subjectRef: ref, subjectTitle: state.artifact(for: ref)?.title ?? "Lesson plan",
+            providerId: "anthropic", modelId: "claude-opus-5",
+            modelDisplayName: "Claude Opus 5",
+            strengths: [
+                "The tiering is driven by exit-ticket data rather than a hunch.",
+                "Four product options give genuine choice without four preps.",
+                "The gallery close makes student thinking visible to the room.",
+            ],
+            suggestions: [
+                ReviewSuggestion(
+                    title: "The close tells you who presented, not who understood",
+                    detail: "A gallery share surfaces the confident students. Add a "
+                        + "three-question exit ticket in the last five minutes so you "
+                        + "leave with data on everyone.", stepNumber: 4),
+                ReviewSuggestion(
+                    title: "Thirty minutes is tight for a product",
+                    detail: "Steps 1 and 2 will eat closer to twelve minutes than five "
+                        + "once transitions are counted.", stepNumber: 3),
+                ReviewSuggestion(
+                    title: "No landing spot for early finishers",
+                    detail: "A student who finishes at minute eighteen has nowhere to go. "
+                        + "Name one extension task per option.", stepNumber: nil),
+            ],
+            questions: [
+                "What does a student who missed the last two lessons do at step 2?",
+                "Do the three tiers assess the same understanding, or different depths of it?",
+            ],
+            payloadSent: payload?.outgoingText ?? "",
+            requestBytes: payload?.byteCount ?? 0,
+            auditEntryId: "audit-sample",
+            studentIdOrder: lexicon.studentIdOrder)
     }
 
     /// Runs the placement stages headlessly and never returns — the caller is
@@ -440,7 +576,7 @@ struct LessonLabApp: App {
                     let elapsed = String(format: "%.1fs", Date().timeIntervalSince(started))
                     print("run \(run): level \(placement.level) "
                           + "[\(rungs)]\(placement.hasMixedEvidence ? " MIXED" : "")"
-                          + "\(placement.isRelevant ? "" : " NOT-RELEVANT") \(elapsed)")
+                          + "\(placement.isOffTopic ? " OFF-TOPIC" : "") \(elapsed)")
                     if let next = placement.nextStep { print("        next: \(next)") }
                 } catch {
                     print("run \(run): FAILED — \(error.localizedDescription)")

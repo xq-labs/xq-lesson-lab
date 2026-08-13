@@ -29,6 +29,14 @@ struct ModelSpec: Identifiable, Hashable {
     /// False while the GGUF isn't published yet — the card reads "Coming soon"
     /// instead of offering a download that would 404. See RELEASING.md.
     let available: Bool
+    /// A llama.cpp built-in template name ("gemma", "llama3", …) to render the
+    /// prompt with when the GGUF's own embedded template can't be applied.
+    /// Some quants ship a Jinja template llama.cpp's matcher doesn't know
+    /// (unsloth's Gemma 4 does); without this hint the silent fallback is
+    /// Qwen-shaped ChatML, and the model imitates the alien `<|im_end|>` tags
+    /// as text instead of ever emitting its real end-of-turn token — replies
+    /// ramble into self-dialogue until the token ceiling.
+    var templateName: String? = nil
 
     /// Nothing is downloaded without a checksum to verify it against.
     var canDownload: Bool { available && sha256 != nil }
@@ -147,7 +155,8 @@ enum ModelCatalog {
         recommendedRAMGB: 16,
         usesThinkPrefill: false,
         license: "Gemma Terms of Use",
-        available: true)
+        available: true,
+        templateName: "gemma")
 
     static let gemmaE4B = ModelSpec(
         id: "gemma4-e4b",
@@ -162,7 +171,8 @@ enum ModelCatalog {
         recommendedRAMGB: 16,
         usesThinkPrefill: false,
         license: "Gemma Terms of Use",
-        available: true)
+        available: true,
+        templateName: "gemma")
 
     static let qwen9B = ModelSpec(
         id: "qwen3.5-9b",

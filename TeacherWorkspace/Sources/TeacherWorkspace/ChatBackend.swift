@@ -53,6 +53,16 @@ struct GenerationOptions {
     /// that has already "written" `{"meets":` cannot open with a preamble or
     /// wrap its answer in a code fence.
     var assistantPrefix: String?
+    /// Repetition penalty over the last `penaltyWindow` tokens; 1.0 disables,
+    /// and disabled is the default on purpose. It looks like the fix for a
+    /// model that echoes itself until `maxTokens`, but the observed cause of
+    /// that (Gemma) was a mis-templated prompt — see `ModelSpec.templateName`
+    /// — and at 1.1 the penalty visibly corrupts artifact JSON on Qwen: the
+    /// structurally repeated `":` tokens get suppressed and colons vanish
+    /// mid-object. Kept as a per-call knob for experiments; greedy calls
+    /// (temperature 0) never sample and ignore it either way.
+    var repeatPenalty: Float = 1.0
+    var penaltyWindow: Int32 = 256
 
     /// Today's behaviour, unchanged.
     static let chat = GenerationOptions()

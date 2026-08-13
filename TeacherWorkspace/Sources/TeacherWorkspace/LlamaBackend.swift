@@ -147,14 +147,23 @@ final class LlamaBackend: ChatBackend, @unchecked Sendable {
     }
 
     /// Applies the GGUF's own chat template, retrying without a system turn if
-    /// the template refuses one. Gemma's template has no system role, and the
-    /// silent fallback below is Qwen-shaped ChatML — the wrong prompt for
-    /// every other family — so it's worth folding the system text into the
-    /// first user turn and asking again before giving up.
+    /// the template refuses one (Gemma's has no system role), then the spec's
+    /// `templateName` hint — some quants embed a Jinja template llama.cpp's
+    /// matcher can't read, and the ChatML fallback below is the wrong prompt
+    /// for every non-Qwen family: the model imitates the alien tags as text
+    /// and never ends its turn.
     private func applyModelTemplate(model: OpaquePointer, turns: [ChatTurn]) -> String? {
-        if let rendered = renderWithTemplate(model: model, turns: turns) { return rendered }
-        guard turns.contains(where: { $0.role == .system }) else { return nil }
-        return renderWithTemplate(model: model, turns: foldingSystemIntoFirstUser(turns))
+        var candidates: [String] = []
+        if let tmpl = llama_model_chat_template(model, nil) { candidates.append(String(cString: tmpl)) }
+        if let hint = loadedSpec?.templateName { candidates.append(hint) }
+        for tmpl in candidates {
+            if let rendered = renderWithTemplate(tmpl: tmpl, turns: turns) { return rendered }
+            if turns.contains(where: { $0.role == .system }),
+               let rendered = renderWithTemplate(tmpl: tmpl, turns: foldingSystemIntoFirstUser(turns)) {
+                return rendered
+            }
+        }
+        return nil
     }
 
     /// Merges any system turns into the first user turn, for templates that
@@ -169,8 +178,7 @@ final class LlamaBackend: ChatBackend, @unchecked Sendable {
         return rest
     }
 
-    private func renderWithTemplate(model: OpaquePointer, turns: [ChatTurn]) -> String? {
-        guard let tmpl = llama_model_chat_template(model, nil) else { return nil }
+    private func renderWithTemplate(tmpl: String, turns: [ChatTurn]) -> String? {
         var cMessages: [llama_chat_message] = turns.map {
             llama_chat_message(role: strdup($0.role.rawValue), content: strdup($0.content))
         }
@@ -380,6 +388,11 @@ final class LlamaBackend: ChatBackend, @unchecked Sendable {
         guard options.temperature > 0 else {
             llama_sampler_chain_add(chain, llama_sampler_init_greedy())
             return chain
+        }
+        // Penalties go first so the probability shaping below sees them.
+        if options.repeatPenalty > 1 {
+            llama_sampler_chain_add(chain, llama_sampler_init_penalties(
+                options.penaltyWindow, options.repeatPenalty, 0, 0))
         }
         // Qwen3-recommended sampling for non-thinking chat.
         llama_sampler_chain_add(chain, llama_sampler_init_top_k(options.topK))

@@ -120,7 +120,8 @@ got here.
       (`contextByChat`), threaded into the system prompt. **Pill hidden from
       the composer** since @mentions cover the same ground inline — the view
       and its plumbing are intact, re-add `contextPicker` in `ChatView` to
-      bring it back.
+      bring it back. *(Aug 2026: picker deleted in the focus cleanup —
+      `contextByChat` and its store field remain, still read by `buildTurns`.)*
 - [x] `@mentions` in the composer (July 31): `Mentions.swift` (catalog +
       scanner) and `MentionTextView.swift` (an `NSTextView` wrapper, since
       `TextField` can't tint part of its text). Typing `@` opens a picker over

@@ -335,10 +335,6 @@ struct ChatView: View {
                     onCancel: closeMentionPicker)
                 HStack(spacing: 6) {
                     plusMenu
-                    // Class context pill hidden for now — @mentions cover the
-                    // same ground inline. `contextPicker` is still wired up
-                    // (and its per-chat selection still feeds the prompt), so
-                    // putting it back is a one-line change.
                     Spacer()
                     micButton
                     Button {
@@ -605,47 +601,6 @@ struct ChatView: View {
                 }
             }
         }
-    }
-
-    /// Picks which class or student this conversation is about; the choice
-    /// is threaded into the model's prompt and remembered per chat.
-    private var contextPicker: some View {
-        Menu {
-            Button("No specific context") { state.setComposerContext(nil) }
-            let classes = state.classroom.classes.filter { !$0.name.isEmpty }
-            if !classes.isEmpty {
-                Section("Classes") {
-                    ForEach(classes) { cls in
-                        Button(cls.name) { state.setComposerContext(cls.name) }
-                    }
-                }
-            }
-            let students = classes.flatMap(\.students).filter { !$0.name.isEmpty }
-            if !students.isEmpty {
-                Section("Students") {
-                    ForEach(students) { s in
-                        Button(s.name) { state.setComposerContext("student \(s.name)") }
-                    }
-                }
-            }
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "person")
-                    .font(.system(size: 11, weight: .medium))
-                Text(state.composerContext?.replacingOccurrences(of: "student ", with: "") ?? "Class context")
-                    .font(.system(size: 12.5, weight: .semibold))
-                    .lineLimit(1)
-            }
-            .foregroundStyle(state.composerContext == nil ? t.sub : t.accent)
-            .padding(.horizontal, 10)
-            .frame(height: 30)
-            .background(Capsule().fill(state.composerContext == nil ? .clear : t.accentSoft))
-            .contentShape(Capsule())
-        }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .help("Tell the assistant which class or student this chat is about")
     }
 
     private func sendFromComposer() {

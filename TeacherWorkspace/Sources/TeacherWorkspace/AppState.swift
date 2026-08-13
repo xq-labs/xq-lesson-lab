@@ -74,10 +74,11 @@ final class AppState: ObservableObject {
     @Published var recentSkillIds: [String] = []
     /// The teacher's real setup — drives the system prompt and sidebar.
     @Published var classroom: Classroom = .demo
-    /// Per-chat "Class context" pill selection (class or student name).
+    /// Per-chat class/student context. The picker that wrote it was removed
+    /// in the focus cleanup (@mentions superseded it); the field stays because
+    /// old stores may carry selections, and `buildTurns` still reads it for
+    /// the demo chats' `SampleData.chatMeta` fallback.
     @Published var contextByChat: [String: String] = [:]
-    /// Context chosen on the welcome screen before the chat exists.
-    @Published var pendingContext: String?
     /// The classroom that was replaced by "Start fresh" / "Restore demo" —
     /// one level of undo for destructive classroom resets.
     @Published var classroomBackup: Classroom?
@@ -628,20 +629,6 @@ final class AppState: ObservableObject {
         }
     }
 
-    /// The context pill's current selection for the active (or pending) chat.
-    var composerContext: String? {
-        if let id = activeChat { return contextByChat[id] }
-        return pendingContext
-    }
-
-    func setComposerContext(_ value: String?) {
-        if let id = activeChat {
-            if let value { contextByChat[id] = value } else { contextByChat.removeValue(forKey: id) }
-        } else {
-            pendingContext = value
-        }
-    }
-
     var canRegenerate: Bool {
         guard !isStreaming, view == .chat, let id = activeChat,
               let msgs = extraMessages[id], msgs.count >= 2,
@@ -840,10 +827,6 @@ final class AppState: ObservableObject {
             chatId = id
         }
         guard let id = chatId else { return }
-        if let pending = pendingContext {
-            contextByChat[id] = pending
-            pendingContext = nil
-        }
         var userMessage = Message(role: .user, text: text)
         var hidden: [String] = []
         if !pendingAttachments.isEmpty {

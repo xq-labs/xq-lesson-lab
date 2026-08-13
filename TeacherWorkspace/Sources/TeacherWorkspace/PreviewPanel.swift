@@ -142,7 +142,7 @@ struct PreviewPanel: View {
                     .font(.system(size: 14, weight: .semibold))
                     .padding(.top, 4)
                 Text(refs.isEmpty
-                     ? "Ask for a rubric, lesson plan, quiz, or family email and it will appear here."
+                     ? "Ask for a rubric, lesson plan, or quiz and it will appear here."
                      : "Artifacts from this chat:")
                     .font(.system(size: 12))
                     .foregroundStyle(t.sub)

@@ -515,7 +515,6 @@ enum SampleData {
         Suggestion(title: "Draft a rubric", sub: "Four levels, ready to grade with", seed: "Draft a 4-level rubric for "),
         Suggestion(title: "Plan a lesson", sub: "Timed agenda, saved to Activities", seed: "Create a lesson plan for "),
         Suggestion(title: "Make an exit ticket", sub: "Quick check for understanding", seed: "Create a 5-question exit ticket quiz on "),
-        Suggestion(title: "Write home to families", sub: "Drafted for your review — you send it", seed: "Draft an email to families about "),
         Suggestion(title: "Differentiate for a student", sub: "Grounded in your roster notes", seed: "How should I adapt tomorrow’s lesson for "),
         Suggestion(title: "Update a student’s PoG", sub: "From recent work and observations", seed: "Update the Portrait of a Graduate for "),
     ]

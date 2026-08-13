@@ -43,7 +43,8 @@ struct LessonLabApp: App {
             print("chats: \(saved.extraChats.count)")
             print("messages: \(saved.extraMessages.values.reduce(0) { $0 + $1.count })")
             print("rubrics: \(saved.userRubrics.count), activities: \(saved.userActivities.count), "
-                  + "pogs: \(saved.userPogs.count), quizzes: \(saved.userQuizzes.count)")
+                  + "pogs: \(saved.userPogs.count), quizzes: \(saved.userQuizzes.count), "
+                  + "emails: \(saved.userEmails.count)")
             print("folders: \(saved.folders?.count ?? 0), archived: \(saved.archivedChats?.count ?? 0)")
             print("classroom: \(saved.classroom.teacherName.isEmpty ? "(unnamed)" : saved.classroom.teacherName) "
                   + "— \(saved.classroom.classes.count) classes, "

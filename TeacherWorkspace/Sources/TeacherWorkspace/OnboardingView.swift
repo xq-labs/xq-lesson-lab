@@ -187,7 +187,7 @@ private struct OnboardingPage {
             features: [
                 Feature(icon: "wand.and.stars",
                         title: "Rubrics, activities, quizzes & more",
-                        detail: "Ask for a rubric, lesson plan, exit ticket, PoG draft, or family email — each one is saved to its library automatically."),
+                        detail: "Ask for a rubric, lesson plan, exit ticket, or PoG draft — each one is saved to its library automatically."),
                 Feature(icon: "at",
                         title: "@mention what you mean",
                         detail: "Type @ to reference a student, class, rubric, or activity — the assistant works from the real thing behind the name."),

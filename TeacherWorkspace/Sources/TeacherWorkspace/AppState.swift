@@ -1007,12 +1007,10 @@ final class AppState: ObservableObject {
         {"type":"activity","title":"...","subject":"Biology","duration":"45 min","format":"Stations","description":"one line","steps":["...","..."]}
         Quiz or exit ticket (3-10 questions; "choices" optional — omit for short answer; keep answers brief):
         {"type":"quiz","title":"...","subtitle":"one line","questions":[{"prompt":"...","choices":["...","...","...","..."],"answer":"B"},{"prompt":"...","answer":"short answer"}]}
-        Email to families (write the full email in "body" with newlines; warm, plain language):
-        {"type":"email","title":"Subject line","subtitle":"who it's for","body":"Dear families,\\n..."}
         Lesson plan: use the activity type with "format":"Lesson plan" and the steps as the agenda.
         PoG (exactly these 5 competencies: Critical Thinking, Effective Communication, Collaboration, Self-Direction, Civic Engagement; level is 1-5):
         {"type":"pog","title":"Student Name — PoG Draft","subtitle":"one line","competencies":[{"name":"...","description":"one line","level":3}]}
-        Only the types rubric, activity, quiz, email, and pog exist. For every other request — questions, \
+        Only the types rubric, activity, quiz, and pog exist. For every other request — questions, \
         summaries, advice, anything conversational — reply in plain text with NO code block.
         When the teacher asks to change or revise an existing artifact, emit the complete revised \
         artifact using EXACTLY the same title — the app replaces the old version.

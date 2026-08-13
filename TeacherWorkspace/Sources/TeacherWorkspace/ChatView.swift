@@ -473,7 +473,6 @@ struct ChatView: View {
                 Button("New rubric") { state.draft = "Draft a 4-level rubric for " }
                 Button("New lesson plan") { state.draft = "Create a lesson plan for " }
                 Button("New exit ticket") { state.draft = "Create a 5-question exit ticket quiz on " }
-                Button("Email to families") { state.draft = "Draft an email to families about " }
             }
         } label: {
             Image(systemName: "plus")

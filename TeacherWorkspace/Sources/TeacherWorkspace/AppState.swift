@@ -47,13 +47,7 @@ final class AppState: ObservableObject {
     @Published var chatTitleOverrides: [String: String] = [:]
     @Published var pogLevels: [String: Int] = [:]
     @Published var connections: [String: Bool] = [
-        "classroom": true, "calendar": true, "drive": true,
-        "sis": true, "gmail": true, "seesaw": false, "canvas": false,
-    ]
-    /// Skills tab on the Plugins page — installed state per skill key.
-    @Published var installedSkills: [String: Bool] = [
-        "rubric-builder": true, "lesson-planner": true, "exit-tickets": true,
-        "family-emails": true, "differentiation": false, "pog-updater": false,
+        "classroom": true, "calendar": true,
     ]
     /// Bumped after sending so the chat scrolls to the newest message.
     @Published var scrollTick = 0
@@ -195,7 +189,6 @@ final class AppState: ObservableObject {
             pogLevels = saved.pogLevels
             themeName = saved.themeName
             connections = connections.merging(saved.connections) { _, new in new }
-            installedSkills = installedSkills.merging(saved.installedSkills ?? [:]) { _, new in new }
             chatTitleOverrides = saved.chatTitleOverrides ?? [:]
             folders = saved.folders ?? []
             chatFolder = saved.chatFolder ?? [:]
@@ -251,7 +244,6 @@ final class AppState: ObservableObject {
             classroomBackup: classroomBackup,
             previewWidth: Double(previewWidth),
             chatTitleOverrides: chatTitleOverrides,
-            installedSkills: installedSkills,
             folders: folders,
             chatFolder: chatFolder,
             archivedChats: Array(archivedChats).sorted(),

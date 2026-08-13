@@ -50,7 +50,6 @@ struct PersistedState: Codable {
     var previewWidth: Double?
     /// Optional so stores written before this field existed still decode.
     var chatTitleOverrides: [String: String]?
-    var installedSkills: [String: Bool]?
     /// Teacher-made sidebar folders, and which folder each chat sits in.
     var folders: [Folder]?
     var chatFolder: [String: String]?

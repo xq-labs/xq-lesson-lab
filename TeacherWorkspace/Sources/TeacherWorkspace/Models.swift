@@ -448,36 +448,11 @@ enum SampleData {
         var desc: String
     }
 
+    /// One honest card: the only integration that maps to the roadmap
+    /// (Phase 5's ingestion ladder). The rest were promise-ware and were
+    /// removed in the focus cleanup — see CLEANUP.md A3.
     static let integrationDefs: [IntegrationDef] = [
         IntegrationDef(key: "classroom", name: "Google Classroom", initial: "C", desc: "Rosters, assignments, and grades give the assistant class context."),
-        IntegrationDef(key: "drive", name: "Google Drive", initial: "D", desc: "Rubrics and activities save straight to your teaching folders."),
-        IntegrationDef(key: "sis", name: "PowerSchool SIS", initial: "P", desc: "Gradebook and attendance inform interventions and catch-up plans."),
-        IntegrationDef(key: "gmail", name: "Gmail", initial: "M", desc: "Family emails drafted in chat, sent from your address."),
-        IntegrationDef(key: "seesaw", name: "Seesaw", initial: "S", desc: "Pull student portfolio evidence into PoG updates."),
-        IntegrationDef(key: "canvas", name: "Canvas LMS", initial: "C", desc: "Sync modules and assignments for cross-listed courses."),
-    ]
-
-    struct SkillDef {
-        var key: String
-        var name: String
-        var icon: String
-        var desc: String
-    }
-
-    /// Task-specific skills shown on the Plugins → Skills tab.
-    static let skillDefs: [SkillDef] = [
-        SkillDef(key: "rubric-builder", name: "Rubric Builder", icon: "tablecells",
-                 desc: "Four-level rubrics in your school's format, ready to grade with."),
-        SkillDef(key: "lesson-planner", name: "Lesson Planner", icon: "calendar",
-                 desc: "Timed agendas that fit your periods, with materials lists."),
-        SkillDef(key: "exit-tickets", name: "Exit Tickets", icon: "checklist",
-                 desc: "Quick checks for understanding, scored against your rubrics."),
-        SkillDef(key: "family-emails", name: "Family Emails", icon: "envelope",
-                 desc: "Warm, clear notes home — drafted for your review, you send."),
-        SkillDef(key: "differentiation", name: "Differentiation Coach", icon: "person.2",
-                 desc: "Adapts tomorrow's lesson for the students in your roster."),
-        SkillDef(key: "pog-updater", name: "PoG Updater", icon: "person.crop.square",
-                 desc: "Turns recent work and observations into Portrait updates."),
     ]
 
     struct CalendarEvent: Identifiable {

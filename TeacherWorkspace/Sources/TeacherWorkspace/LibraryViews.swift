@@ -143,30 +143,18 @@ struct IntegrationsView: View {
     @EnvironmentObject var state: AppState
     private var t: Theme { state.theme }
 
-    private enum Tab { case plugins, skills }
-    @State private var tab: Tab = .plugins
-
     var body: some View {
-        // Same scaffold as LibraryPage, but the tab switcher sits above the
-        // title so the title/subtitle change with it.
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                tabBar
-                    .padding(.bottom, 18)
-                Text(tab == .plugins ? "Plugins" : "Skills")
+                Text("Plugins")
                     .font(.system(size: 20, weight: .bold))
                     .kerning(-0.2)
-                Text(tab == .plugins
-                     ? "Integrations that give the assistant context. On-device first — nothing is sent anywhere without you asking."
-                     : "Extend the assistant with task-specific skills. Install the ones that fit your teaching.")
+                Text("Integrations that give the assistant context. On-device first — nothing is sent anywhere without you asking.")
                     .foregroundStyle(t.sub)
                     .padding(.top, 4)
                     .padding(.bottom, 20)
                 VStack(alignment: .leading, spacing: 18) {
-                    switch tab {
-                    case .plugins: pluginsTab
-                    case .skills: skillsTab
-                    }
+                    pluginsTab
                 }
             }
             .frame(maxWidth: 960, alignment: .leading)
@@ -174,31 +162,6 @@ struct IntegrationsView: View {
             .padding(.horizontal, 32)
             .frame(maxWidth: .infinity)
         }
-    }
-
-    private var tabBar: some View {
-        HStack(spacing: 4) {
-            tabButton("Plugins", .plugins)
-            tabButton("Skills", .skills)
-        }
-        .padding(3)
-        .background(RoundedRectangle(cornerRadius: 9).fill(t.side))
-    }
-
-    private func tabButton(_ label: String, _ value: Tab) -> some View {
-        let selected = tab == value
-        return Button {
-            tab = value
-        } label: {
-            Text(label)
-                .font(.system(size: 12.5, weight: .semibold))
-                .foregroundStyle(selected ? t.text : t.sub)
-                .padding(.vertical, 5)
-                .padding(.horizontal, 14)
-                .background(RoundedRectangle(cornerRadius: 7).fill(selected ? t.active : .clear))
-                .contentShape(RoundedRectangle(cornerRadius: 7))
-        }
-        .buttonStyle(.plain)
     }
 
     @ViewBuilder
@@ -218,69 +181,6 @@ struct IntegrationsView: View {
                 comingSoonCard(def)
             }
         }
-    }
-
-    @ViewBuilder
-    private var skillsTab: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), spacing: 14)], spacing: 14) {
-            ForEach(SampleData.skillDefs, id: \.key) { def in
-                skillCard(def)
-            }
-        }
-    }
-
-    private func skillCard(_ def: SampleData.SkillDef) -> some View {
-        let installed = state.installedSkills[def.key] ?? false
-        return VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 10) {
-                Image(systemName: def.icon)
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(installed ? t.accent : t.dim)
-                    .frame(width: 32, height: 32)
-                    .background(RoundedRectangle(cornerRadius: 9).fill(installed ? t.accentSoft : t.hover))
-                Text(def.name)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(t.text)
-                Spacer()
-                if installed {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(t.green)
-                }
-            }
-            Text(def.desc)
-                .font(.system(size: 12.5))
-                .foregroundStyle(t.sub)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Spacer(minLength: 0)
-            HStack(spacing: 8) {
-                if installed {
-                    Circle().fill(t.green).frame(width: 7, height: 7)
-                    Text("Installed")
-                        .font(.system(size: 12))
-                        .foregroundStyle(t.sub)
-                }
-                Spacer()
-                Button {
-                    state.installedSkills[def.key] = !installed
-                } label: {
-                    Text(installed ? "Remove" : "Install")
-                        .font(.system(size: 12.5, weight: .semibold))
-                        .foregroundStyle(installed ? t.sub : .white)
-                        .padding(.vertical, 5)
-                        .padding(.horizontal, 12)
-                        .background(RoundedRectangle(cornerRadius: 8)
-                            .fill(installed ? t.hover : t.accent))
-                        .contentShape(RoundedRectangle(cornerRadius: 8))
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.top, 8)
-        }
-        .padding(16)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(t.card))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(t.border))
     }
 
     private func sectionHeader(_ text: String) -> some View {

@@ -8,6 +8,18 @@ explicit, opt-in "second opinion" on a single document, gated by a deterministic
 redaction check and a payload preview the teacher reads before it sends; student
 work in Skill Check has no path to it at all.
 
+## Direction (Aug 2026): the bets
+
+The product sync of Aug 6, 2026 set XQ's direction as open infrastructure
+under the systems schools already run, with **competency tools and mastery
+scanners** as the product team's top priorities. This app is the working
+embodiment of the two bets those come from — Mastery in Place (local-first,
+school-owned, model-agnostic) and the Competency DNA layer (the framework as
+something teachable and assessable, not a poster). The full mapping, the
+philosophy-bar table, and the asks of the org are in `STRATEGY.md`; Phases 5
+and 6 below are the build-out. Phases 1–4 stand as the record of how the app
+got here.
+
 ## Current state (done)
 
 - [x] Full UI from the claude.ai/design mock (sidebar, chat, libraries, preview panel, ⌘K search, light/dark)
@@ -216,6 +228,82 @@ work in Skill Check has no path to it at all.
       Still open: a guided create-classroom wizard (tour just points at My
       Classroom for now).
 - [ ] Known model-quality issue: 2B sometimes repeats level descriptions in rubrics; mitigations: retry affordance, 4B tier, prompt tuning
+
+## Phase 4.5 — Focus cleanup (before the scanner)
+
+A short, sharp pass that removes what a general-purpose assistant would have
+and the bets don't need — full work order with file:line refs and decode-safety
+notes in `CLEANUP.md`.
+
+- [ ] Park email generation (keep rendering saved drafts — never eat teacher data)
+- [ ] Re-center the welcome screen: 4 focused cards + a Skill Check card
+- [ ] Plugins tab down to one honest SOON card (Google Classroom); remove the
+      cosmetic Skills sub-tab
+- [ ] Delete the dead class-context picker write path (superseded by @mentions;
+      `contextByChat` and its store field stay)
+- [ ] Retire the hardcoded PoG competency list: prompt draws from the
+      framework's 5 learner outcomes, nil-safe fallback (may slide to Phase 6
+      kickoff)
+
+## Phase 5 — Mastery in Place (the scanner)
+
+The sync's top priority, and mostly a batch composition of pieces that already
+exist: `EvaluationPipeline` judges one work sample; the scanner runs it across
+a set of submissions and shows the class at once.
+
+- [ ] **Batch Skill Check** — pick an assignment name and one or more component
+      skills, ingest a set of submissions, run the existing staged pipeline per
+      submission on the serial backend queue with live progress ("4 of 28").
+      Same intake rules as `WorkDocument` (200-char/3-sentence floor, 24K cap) —
+      a scan that would produce a confident evaluation of nothing gets skipped
+      and says so, per file.
+- [ ] **Ingestion ladder** — folder of files first (drag a folder of
+      PDFs/docx; filename → work label, never auto-matched to a roster
+      student — the teacher labels the assignment, not the child, same as
+      Skill Check today). Then a CSV manifest for labeled batches. Google
+      Classroom read-only lands here **when the OAuth client exists** (moved
+      from Phase 2 — still blocked on the org, not engineering).
+- [ ] **Class mastery view** — a per-skill grid of placements where every cell
+      opens the existing single-sample result card: same descriptor-beside-level
+      display, same sentence-index evidence, same teacher override with the
+      model's number preserved. No aggregate is shown that can't be decomposed
+      into individually reviewable placements — the "understandable at every
+      step" bar applies to the grid, not just the cells.
+- [ ] **Batch stability probe** — extend `TW_EVAL_FILE`/`TW_EVAL_RUNS` to a
+      directory: the release gate becomes "no placement in the corpus moves
+      between runs," before any of it reaches a teacher.
+- Student work still has no path off this Mac: scanner results, like Skill
+  Check placements, are excluded from `allReviewableRefs` by construction.
+
+## Phase 6 — Portrait decomposition (Competency DNA)
+
+The app has two competency models that don't touch: the real XQ framework
+(5/13/37/115, used by Skill Check) and the hardcoded 5-competency PoG list in
+`AppState.systemPrompt`. Bet 1's decompose → implement → recompose loop is the
+bridge.
+
+- [ ] **PoG ↔ framework mapping** — a Portrait artifact's competencies gain
+      optional mappings to XQ component skills. Additive and optional in
+      `PersistedState` (the `Failable` pattern), so old stores and unmapped
+      Portraits keep working untouched.
+- [ ] **Decomposition flow** — take a school's local Portrait (typed, pasted,
+      or an existing PoG artifact) and propose XQ component skills under each
+      local competency. Model-suggested, teacher-confirmed per mapping — the
+      same suggest-don't-decide posture as skill auto-suggestion, and every
+      accepted mapping shows *why* (the skill's own description, not model
+      prose).
+- [ ] **Recompose evidence** — roll Skill Check / scanner placements up
+      through the mapping into a local-Portrait view: "here is your Portrait,
+      with the evidence behind each competency," decomposable down to
+      individual placements.
+- [ ] **Retire the hardcoded PoG list** — system prompt draws PoG competencies
+      from the framework (or the mapped local Portrait) instead of the five
+      hardcoded names. Existing PoG artifacts are untouched; only generation
+      changes.
+- Constraint that stands: progression rung labels and rubric levels stay
+  separate vocabularies (`XQFramework.swift` warns against merging
+  `levelLabels` with `SampleData.levels4` — recomposition maps evidence, it
+  does not relabel rubrics).
 
 ## Architecture notes for future sessions
 

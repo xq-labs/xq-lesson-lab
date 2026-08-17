@@ -4,14 +4,14 @@
         <title>XQ Lesson Lab</title>
         <item>
             <title>1.0.4</title>
-            <pubDate>Thu, 06 Aug 2026 12:58:24 -0300</pubDate>
+            <pubDate>Mon, 17 Aug 2026 08:23:30 -0300</pubDate>
             <sparkle:version>5</sparkle:version>
             <sparkle:shortVersionString>1.0.4</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <enclosure url="https://github.com/xq-labs/xq-lesson-lab/releases/download/v1.0.4/Lesson-Lab-1.0.4.zip" length="6458255" type="application/octet-stream" sparkle:edSignature="/Okkc7RRl7sCVXNb0x6VVlPZc6n5vC6FZZnH3IcmJUXynapX03oRPXGZTzq1ef2HK4wM38Qmz9KA07F8OcvGBw=="/>
+            <enclosure url="https://github.com/xq-labs/xq-lesson-lab/releases/download/v1.0.4/Lesson-Lab-1.0.4.zip" length="6448505" type="application/octet-stream" sparkle:edSignature="uKK8In99t8A2wwPIlLtG156cCGC4FS13cLTniPyT+Kof93/uuQq2BYT5Gzg/GuYLey+hsmTk5rKMn1lYdjSWBQ=="/>
             <sparkle:deltas>
-                <enclosure url="https://github.com/xq-labs/xq-lesson-lab/releases/download/v1.0.4/XQ.Lesson.Lab5-4.delta" sparkle:deltaFrom="4" length="630798" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="qHRcI4ds1NzC4n3uV+UcC7+oHjVbCSfZaw+N9L/gIIdp3dtFY33gNJxYnKf6xIZqpBSZLYEBZQ9e8g5k6zrxCA=="/>
+                <enclosure url="https://github.com/xq-labs/xq-lesson-lab/releases/download/v1.0.4/XQ.Lesson.Lab5-4.delta" sparkle:deltaFrom="4" length="741902" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="sHm5/z9QQGcFfyTlAWeOuYN9G46y9rYlJXKyC+yOsyqBzTVE5CJVeD9XUUN3MvIMfRq4DfawE6LlAaVep4yrAA=="/>
             </sparkle:deltas>
         </item>
         <item>
